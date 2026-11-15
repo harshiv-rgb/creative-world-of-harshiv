@@ -55,9 +55,9 @@
 <section id="adminView" class="view hidden section">
   <p class="eyebrow">STORE MANAGEMENT</p><h1 class="page-title">Admin dashboard</h1>
   <div id="adminLogin" class="panel narrow">
-    <h2>Admin sign in</h2><p class="muted">This demo dashboard is stored on this browser only.</p>
-    <form id="loginForm"><label>Admin PIN<input name="pin" type="password" inputmode="numeric" required></label><button class="primary-btn wide">Open dashboard</button></form>
-    <p class="tiny muted">Demo PIN: 2468. Change it in the app code before sharing. This PIN is not secure authentication.</p>
+    <h2>Admin sign in</h2><p class="muted">Sign in with the admin email and password created in Firebase.</p>
+    <form id="loginForm"><label>Admin email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary-btn wide" type="submit">Sign in</button></form>
+    <p class="tiny muted">Only the authorized Firebase admin account can open this dashboard.</p>
   </div>
   <div id="adminPanel" class="hidden">
     <div class="admin-actions"><button class="secondary-btn" id="exportOrders">Export orders (CSV)</button><button class="secondary-btn" id="logoutBtn">Log out</button></div>
@@ -78,5 +78,5 @@
 </main>
 <footer><b>THE CREATIVE WORLD OF HARSHIV</b><p>Great things are done by a series of small things brought together.</p><small>Independent shop demo • COD only</small></footer>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body></html>

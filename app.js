@@ -1,5 +1,23 @@
-/* Demo-only local storage app.
-   For real multi-customer orders, connect a secure backend before launch. */
+/* The Creative World of Harshiv — Firebase email/password sign-in.
+   Product/order data is still local to this browser until Firestore is connected. */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPqL93rmuXdrIJPkejOL_cjod2VTcgNzM",
+  authDomain: "the-creative-world-of-harshiv.firebaseapp.com",
+  projectId: "the-creative-world-of-harshiv",
+  storageBucket: "the-creative-world-of-harshiv.firebasestorage.app",
+  messagingSenderId: "618891651647",
+  appId: "1:618891651647:web:b75b37d250c00b0b65e68a",
+  measurementId: "G-E52JQLLF34"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+// Replace this with the UID shown beside your account in Firebase Authentication > Users.
+const ADMIN_UID = "7SgbiCsfqFS2WsxFV2sNXdBtCsR2";
+
 const DEFAULT_PRODUCTS = [
  {id:"p1",name:"Handmade Bookmarks",description:"Creative bookmarks for readers and book lovers.",price:50,symbol:"🔖"},
  {id:"p2",name:"Science Projects",description:"Small creative school projects for young learners.",price:150,symbol:"🔬"},
@@ -48,10 +66,30 @@ $("#checkoutForm").addEventListener("submit",e=>{
  window.open(url,"_blank","noopener");
  cart=[];save("cwh_cart",cart);updateCount();e.currentTarget.reset();toast("WhatsApp opened. Press Send to notify the shop.");
 });
-$("#loginForm").addEventListener("submit",e=>{e.preventDefault();const pin=new FormData(e.currentTarget).get("pin");if(pin==="2468"){sessionStorage.setItem("cwh_admin","yes");renderAdmin()}else toast("Incorrect demo PIN.")});
-$("#logoutBtn").onclick=()=>{sessionStorage.removeItem("cwh_admin");renderAdmin()};
-function renderAdmin(){
- const logged=sessionStorage.getItem("cwh_admin")==="yes";$("#adminLogin").classList.toggle("hidden",logged);$("#adminPanel").classList.toggle("hidden",!logged);if(!logged)return;
+$("#loginForm").addEventListener("submit", async e=>{
+ e.preventDefault();
+ const form=new FormData(e.currentTarget);
+ const email=String(form.get("email")||"").trim();
+ const password=String(form.get("password")||"");
+ try {
+   const credential=await signInWithEmailAndPassword(auth,email,password);
+   if(ADMIN_UID === "PASTE_YOUR_ADMIN_UID_HERE" || credential.user.uid !== ADMIN_UID){
+     await signOut(auth);
+     toast("This Firebase account is not authorized as the shop admin. Check ADMIN_UID in app.js.");
+   }
+ } catch(error) {
+   toast(error.code === "auth/invalid-credential" ? "Incorrect email or password." : "Sign-in failed. Check your details and Firebase settings.");
+   console.error("Firebase sign-in error:",error);
+ }
+});
+$("#logoutBtn").onclick=async()=>{try{await signOut(auth)}catch(error){console.error(error);toast("Could not log out. Please try again.")}};
+onAuthStateChanged(auth,user=>{
+ const allowed=!!user && ADMIN_UID !== "PASTE_YOUR_ADMIN_UID_HERE" && user.uid===ADMIN_UID;
+ if(user && !allowed) signOut(auth).catch(console.error);
+ renderAdmin(allowed);
+});
+function renderAdmin(logged=!!auth.currentUser && auth.currentUser.uid===ADMIN_UID){
+ $("#adminLogin").classList.toggle("hidden",logged);$("#adminPanel").classList.toggle("hidden",!logged);if(!logged)return;
  $("#orderTotal").textContent=orders.length;$("#productTotal").textContent=products.length;
  $("#ordersList").innerHTML=orders.length?orders.map(o=>`<div class="order-card"><b>${escapeHtml(o.id)} — ${escapeHtml(o.name)}</b><br><span class="tiny muted">${escapeHtml(o.date)} · ${escapeHtml(o.status)}</span><br>${o.items.map(i=>`${escapeHtml(i.name)} × ${i.qty}`).join("<br>")}<br><b>${money(o.total)} · COD</b><br><span class="tiny">${escapeHtml(o.phone)} · ${escapeHtml(o.address)}</span><br><button class="secondary-btn" data-status="${o.id}">Mark confirmed</button><button class="secondary-btn" data-delete-order="${o.id}">Delete</button></div>`).join(""):'<p class="muted">No orders saved in this browser yet.</p>';
  document.querySelectorAll("[data-status]").forEach(b=>b.onclick=()=>{const o=orders.find(x=>x.id===b.dataset.status);if(o)o.status="Confirmed";save("cwh_orders",orders);renderAdmin()});
