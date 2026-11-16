@@ -94,6 +94,63 @@
         <textarea name="notes" maxlength="300" rows="2"></textarea>
       </label>
 
+
+      <!-- CUSTOMIZATION FEATURE -->
+
+      <div class="customization-box">
+
+        <div class="customization-heading">
+          <div>
+            <span class="customization-icon">✨</span>
+            <b>Customize Your Product</b>
+          </div>
+
+          <span class="optional-label">Optional</span>
+        </div>
+
+        <p>
+          Want something special? Tell us how you would like your
+          product to be customized!
+        </p>
+
+        <button
+          type="button"
+          class="customize-btn"
+          id="customizeToggle"
+        >
+          ✨ Customize Your Product
+        </button>
+
+        <div id="customizationPanel" class="hidden">
+
+          <label for="customizationText">
+            Describe your customization requirements
+          </label>
+
+          <textarea
+            id="customizationText"
+            maxlength="1000"
+            rows="5"
+            placeholder="Example: I want this product in blue colour with the name Harsh written on it..."
+          ></textarea>
+
+          <button
+            type="button"
+            class="primary-btn wide"
+            id="saveCustomization"
+          >
+            Save Customization
+          </button>
+
+        </div>
+
+        <div id="customizationSaved" class="customization-saved hidden">
+          ✅ Customization saved successfully!
+        </div>
+
+      </div>
+
+
       <div class="payment-choice">
         <b>Payment method</b>
         <span>Cash on Delivery (COD) — only option</span>
@@ -179,8 +236,7 @@
       <h2>Orders</h2>
 
       <p class="tiny muted">
-        Only orders placed in this same browser appear here.
-        Customer orders sent from other devices arrive through WhatsApp.
+        Customer orders are synchronized through Firebase.
       </p>
 
       <div id="ordersList"></div>
