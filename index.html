@@ -10,8 +10,16 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
 <header class="topbar">
-  <a class="brand" href="#" aria-label="Home"><span class="brand-mark">CW</span><span><b>THE CREATIVE WORLD</b><small>OF HARSHIV</small></span></a>
+  <a class="brand" href="#" aria-label="Home">
+    <span class="brand-mark">CW</span>
+    <span>
+      <b>THE CREATIVE WORLD</b>
+      <small>OF HARSHIV</small>
+    </span>
+  </a>
+
   <nav>
     <button class="nav-btn active" data-view="shop">Shop</button>
     <button class="nav-btn" data-view="cart">Cart <span id="cartCount">0</span></button>
@@ -20,67 +28,266 @@
 </header>
 
 <main>
+
 <section id="shopView" class="view">
+
   <div class="hero">
-    <div><p class="eyebrow">HANDMADE • PERSONALIZED • CREATIVE</p>
+    <div>
+      <p class="eyebrow">HANDMADE • PERSONALIZED • CREATIVE</p>
       <h1>Little creations.<br><em>Big imagination.</em></h1>
       <p>Discover thoughtful handmade gifts, useful creations and fun school projects.</p>
       <button class="primary-btn" data-go="catalog">Explore products</button>
     </div>
-    <div class="hero-art" aria-hidden="true"><div class="craft c1">✿<small>Made with care</small></div><div class="craft c2">✦<small>Made by hand</small></div><div class="craft c3">♥<small>Made for you</small></div></div>
-  </div>
-  <section class="section" id="catalog">
-    <div class="section-head"><div><p class="eyebrow">OUR COLLECTION</p><h2>Shop our creations</h2></div><p class="muted">Choose an item to add it to your cart.</p></div>
-    <div id="productGrid" class="product-grid"></div>
-  </section>
-</section>
 
-<section id="cartView" class="view hidden section">
-  <p class="eyebrow">YOUR SELECTION</p><h1 class="page-title">Shopping cart</h1>
-  <div id="cartContents"></div>
-  <div class="checkout-wrap" id="checkoutWrap">
-    <h2>Delivery details</h2>
-    <form id="checkoutForm">
-      <label>Customer name<input name="customerName" required maxlength="80" autocomplete="name"></label>
-      <label>Mobile number<input name="phone" required inputmode="tel" pattern="[0-9+() -]{8,18}" maxlength="18" autocomplete="tel"></label>
-      <label>Full delivery address<textarea name="address" required maxlength="400" rows="3" autocomplete="street-address"></textarea></label>
-      <label>Extra instructions (optional)<textarea name="notes" maxlength="300" rows="2"></textarea></label>
-      <div class="payment-choice"><b>Payment method</b><span>Cash on Delivery (COD) — only option</span><small>Pay in cash when your order is delivered.</small></div>
-      <button class="primary-btn wide" type="submit">Place COD order via WhatsApp</button>
-      <p class="tiny muted">When you place the order, WhatsApp will open with your order details. Please press Send in WhatsApp to notify the shop.</p>
-    </form>
-  </div>
-</section>
-
-<section id="adminView" class="view hidden section">
-  <p class="eyebrow">STORE MANAGEMENT</p><h1 class="page-title">Admin dashboard</h1>
-  <div id="adminLogin" class="panel narrow">
-    <h2>Admin sign in</h2><p class="muted">Sign in with the admin email and password created in Firebase.</p>
-    <form id="loginForm"><label>Admin email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary-btn wide" type="submit">Sign in</button></form>
-    <p class="tiny muted">Only the authorized Firebase admin account can open this dashboard.</p>
-  </div>
-  <div id="adminPanel" class="hidden">
-    <div class="admin-actions"><button class="secondary-btn" id="exportOrders">Export orders (CSV)</button><button class="secondary-btn" id="logoutBtn">Log out</button></div>
-    <div class="stats"><div class="stat"><b id="orderTotal">0</b><span>Orders on this device</span></div><div class="stat"><b id="productTotal">0</b><span>Products</span></div></div>
-    <div class="panel"><h2>Orders</h2><p class="tiny muted">Only orders placed in this same browser appear here. Customer orders sent from other devices arrive through WhatsApp.</p><div id="ordersList"></div></div>
-    <div class="panel"><h2>Manage products on this device</h2><form id="productForm" class="product-form">
-      <label>Product name<input name="name" required maxlength="70"></label>
-      <label>Price (₹)<input name="price" type="number" min="0" step="1" required></label>
-      <label>Short description<input name="description" maxlength="140"></label>
-      <label>Symbol / emoji<input name="symbol" maxlength="4" value="🎁"></label>
-      <button class="primary-btn">Add product</button>
-    </form><div id="adminProducts"></div></div>
-    <div class="panel"><h2>WhatsApp shop number</h2><p class="tiny muted">Enter the shop's WhatsApp number with country code, digits only. For India, start with 91. This is saved only in this browser.</p>
-      <form id="settingsForm"><label>WhatsApp number<input name="whatsapp" inputmode="numeric" placeholder="91XXXXXXXXXX" required></label><button class="primary-btn">Save number</button></form>
+    <div class="hero-art" aria-hidden="true">
+      <div class="craft c1">✿<small>Made with care</small></div>
+      <div class="craft c2">✦<small>Made by hand</small></div>
+      <div class="craft c3">♥<small>Made for you</small></div>
     </div>
   </div>
+
+  <section class="section" id="catalog">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">OUR COLLECTION</p>
+        <h2>Shop our creations</h2>
+      </div>
+      <p class="muted">Choose an item to add it to your cart.</p>
+    </div>
+
+    <div id="productGrid" class="product-grid"></div>
+  </section>
+
 </section>
+
+
+<section id="cartView" class="view hidden section">
+
+  <p class="eyebrow">YOUR SELECTION</p>
+  <h1 class="page-title">Shopping cart</h1>
+
+  <div id="cartContents"></div>
+
+  <div class="checkout-wrap" id="checkoutWrap">
+
+    <h2>Delivery details</h2>
+
+    <form id="checkoutForm">
+
+      <label>
+        Customer name
+        <input name="customerName" required maxlength="80" autocomplete="name">
+      </label>
+
+      <label>
+        Mobile number
+        <input name="phone" required inputmode="tel" pattern="[0-9+() -]{8,18}" maxlength="18" autocomplete="tel">
+      </label>
+
+      <label>
+        Full delivery address
+        <textarea name="address" required maxlength="400" rows="3" autocomplete="street-address"></textarea>
+      </label>
+
+      <label>
+        Extra instructions (optional)
+        <textarea name="notes" maxlength="300" rows="2"></textarea>
+      </label>
+
+      <div class="payment-choice">
+        <b>Payment method</b>
+        <span>Cash on Delivery (COD) — only option</span>
+        <small>Pay in cash when your order is delivered.</small>
+      </div>
+
+      <button class="primary-btn wide" type="submit">
+        Place COD order via WhatsApp
+      </button>
+
+      <p class="tiny muted">
+        When you place the order, WhatsApp will open with your order details.
+        Please press Send in WhatsApp to notify the shop.
+      </p>
+
+    </form>
+
+  </div>
+
+</section>
+
+
+<section id="adminView" class="view hidden section">
+
+  <p class="eyebrow">STORE MANAGEMENT</p>
+  <h1 class="page-title">Admin dashboard</h1>
+
+  <div id="adminLogin" class="panel narrow">
+
+    <h2>Admin sign in</h2>
+
+    <p class="muted">
+      Sign in with the admin email and password created in Firebase.
+    </p>
+
+    <form id="loginForm">
+
+      <label>
+        Admin email
+        <input name="email" type="email" autocomplete="username" required>
+      </label>
+
+      <label>
+        Password
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+
+      <button class="primary-btn wide" type="submit">Sign in</button>
+
+    </form>
+
+    <p class="tiny muted">
+      Only the authorized Firebase admin account can open this dashboard.
+    </p>
+
+  </div>
+
+
+  <div id="adminPanel" class="hidden">
+
+    <div class="admin-actions">
+      <button class="secondary-btn" id="exportOrders">Export orders (CSV)</button>
+      <button class="secondary-btn" id="logoutBtn">Log out</button>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <b id="orderTotal">0</b>
+        <span>Orders on this device</span>
+      </div>
+
+      <div class="stat">
+        <b id="productTotal">0</b>
+        <span>Products</span>
+      </div>
+
+    </div>
+
+
+    <div class="panel">
+
+      <h2>Orders</h2>
+
+      <p class="tiny muted">
+        Only orders placed in this same browser appear here.
+        Customer orders sent from other devices arrive through WhatsApp.
+      </p>
+
+      <div id="ordersList"></div>
+
+    </div>
+
+
+    <div class="panel">
+
+      <h2>Manage products on this device</h2>
+
+      <form id="productForm" class="product-form">
+
+        <label>
+          Product name
+          <input name="name" required maxlength="70">
+        </label>
+
+        <label>
+          Price (₹)
+          <input name="price" type="number" min="0" step="1" required>
+        </label>
+
+        <label>
+          Short description
+          <input name="description" maxlength="140">
+        </label>
+
+        <label>
+          Symbol / emoji
+          <input name="symbol" maxlength="4" value="🎁">
+        </label>
+
+        <button class="primary-btn">Add product</button>
+
+      </form>
+
+      <div id="adminProducts"></div>
+
+    </div>
+
+
+    <div class="panel">
+
+      <h2>WhatsApp shop number</h2>
+
+      <p class="tiny muted">
+        Enter the shop's WhatsApp number with country code, digits only.
+        For India, start with 91.
+        This number is saved securely in Firebase and shared across all devices.
+        Only the authorized admin can change it.
+      </p>
+
+      <form id="settingsForm">
+
+        <label>
+          WhatsApp number
+          <input name="whatsapp" inputmode="numeric" placeholder="91XXXXXXXXXX" required>
+        </label>
+
+        <button class="primary-btn">Save number</button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</section>
+
 </main>
-<footer><b>THE CREATIVE WORLD OF HARSHIV</b><p>Great things are done by a series of small things brought together.</p><small>Independent shop demo • COD only</small></footer>
+
+
+<footer>
+
+  <b>THE CREATIVE WORLD OF HARSHIV</b>
+
+  <p>
+    Great things are done by a series of small things brought together.
+  </p>
+
+  <small>Independent shop demo • COD only</small>
+
+</footer>
+
+
 <div id="toast" role="status" aria-live="polite"></div>
+
+
 <script type="module" src="app.js"></script>
+
+
 <div style="position:fixed;bottom:15px;right:15px;z-index:9999;display:flex;flex-direction:column;gap:10px;">
-  <a href="tel:+919780736653" style="background:#16833b;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">📞 Call Us</a>
-  <a href="https://wa.me/919780736653" style="background:#25D366;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">WhatsApp 1</a>
-  <a href="https://wa.me/918558888095" style="background:#25D366;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">WhatsApp 2</a>
-</div></body></html>
+
+  <a href="tel:+919780736653" style="background:#16833b;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">
+    📞 Call Us
+  </a>
+
+  <a href="https://wa.me/919780736653" style="background:#25D366;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">
+    WhatsApp 1
+  </a>
+
+  <a href="https://wa.me/918558888095" style="background:#25D366;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">
+    WhatsApp 2
+  </a>
+
+</div>
+
+</body>
+</html>
