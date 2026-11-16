@@ -1,9 +1,10 @@
 /* The Creative World of Harshiv — Firebase email/password sign-in.
    Product/order data is still local to this browser until Firestore is connected. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 
-const firebaseConfig = {
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
   apiKey: "AIzaSyDPqL93rmuXdrIJPkejOL_cjod2VTcgNzM",
   authDomain: "the-creative-world-of-harshiv.firebaseapp.com",
   projectId: "the-creative-world-of-harshiv",
