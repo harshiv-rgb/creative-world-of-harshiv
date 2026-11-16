@@ -1,10 +1,22 @@
-/* The Creative World of Harshiv — Firebase email/password sign-in.
-   Product/order data is still local to this browser until Firestore is connected. */
+/* The Creative World of Harshiv — Firebase email/password sign-in. */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+
+const firebaseConfig = {
   apiKey: "AIzaSyDPqL93rmuXdrIJPkejOL_cjod2VTcgNzM",
   authDomain: "the-creative-world-of-harshiv.firebaseapp.com",
   projectId: "the-creative-world-of-harshiv",
@@ -16,7 +28,8 @@ import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/fireb
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
-// Replace this with the UID shown beside your account in Firebase Authentication > Users.
+const db = getFirestore(firebaseApp);
+
 const ADMIN_UID = "7SgbiCsfqFS2WsxFV2sNXdBtCsR2";
 
 const DEFAULT_PRODUCTS = [
