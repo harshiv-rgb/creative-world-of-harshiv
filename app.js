@@ -16,8 +16,7 @@ import {
   onSnapshot,
   collection,
   deleteDoc,
-  updateDoc,
-  getDocs
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 
@@ -98,6 +97,10 @@ let cart = read("cwh_cart", []);
 let orders = [];
 
 let settings = { whatsapp: "" };
+
+let customization = read("cwh_customization", "");
+
+let customizationSaved = Boolean(customization);
 
 let shopSettingsLoaded = false;
 let isAdmin = false;
@@ -184,7 +187,6 @@ onSnapshot(productsRef, async snapshot => {
     renderAdmin();
   }
 
-  // Initialize default products if Firebase is empty.
   if (
     snapshot.empty &&
     isAdmin &&
@@ -195,7 +197,6 @@ onSnapshot(productsRef, async snapshot => {
 
     try {
 
-      // Use the existing products on this device if available.
       const localProducts = read(
         "cwh_products",
         DEFAULT_PRODUCTS
@@ -488,6 +489,85 @@ function changeQty(id, delta) {
 
 
 // ------------------------------------
+// CUSTOMIZATION FEATURE
+// ------------------------------------
+
+const customizeToggle = $("#customizeToggle");
+const customizationPanel = $("#customizationPanel");
+const customizationText = $("#customizationText");
+const saveCustomization = $("#saveCustomization");
+const customizationSavedBox = $("#customizationSaved");
+
+
+function updateCustomizationDisplay() {
+
+  if (customizationSaved) {
+
+    customizationSavedBox.classList.remove("hidden");
+
+    customizeToggle.textContent = "✏️ Edit Customization";
+
+  } else {
+
+    customizationSavedBox.classList.add("hidden");
+
+    customizeToggle.textContent = "✨ Customize Your Product";
+
+  }
+
+}
+
+
+customizeToggle.addEventListener("click", () => {
+
+  customizationPanel.classList.toggle("hidden");
+
+  if (!customizationPanel.classList.contains("hidden")) {
+
+    customizationText.value = customization;
+
+    customizeToggle.textContent = "Close Customization";
+
+  } else {
+
+    updateCustomizationDisplay();
+
+  }
+
+});
+
+
+saveCustomization.addEventListener("click", () => {
+
+  const value = customizationText.value.trim();
+
+  if (!value) {
+
+    toast("Please write your customization requirements.");
+
+    return;
+
+  }
+
+  customization = value;
+
+  customizationSaved = true;
+
+  save("cwh_customization", customization);
+
+  customizationPanel.classList.add("hidden");
+
+  updateCustomizationDisplay();
+
+  toast("Customization saved successfully!");
+
+});
+
+
+updateCustomizationDisplay();
+
+
+// ------------------------------------
 // CHECKOUT AND SHARED ORDERS
 // ------------------------------------
 
@@ -554,6 +634,9 @@ $("#checkoutForm").addEventListener("submit", async e => {
     items,
     total,
 
+    // NEW CUSTOMIZATION FIELD
+    customization: customizationSaved ? customization : "",
+
     payment: "Cash on Delivery",
 
     status: "New"
@@ -564,6 +647,17 @@ $("#checkoutForm").addEventListener("submit", async e => {
   const lines = items.map(x =>
     `• ${x.name} × ${x.qty} — ${money(x.price * x.qty)}`
   ).join("\n");
+
+
+  const customizationMessage = order.customization
+    ? `
+✨ CUSTOMIZATION REQUIREMENTS:
+
+${order.customization}
+`
+    : `
+✨ CUSTOMIZATION: None requested.
+`;
 
 
   const msg = `
@@ -582,7 +676,9 @@ Total: ${money(total)}
 
 Payment: CASH ON DELIVERY
 
-${notes ? "Instructions: " + notes : ""}
+${customizationMessage}
+
+${notes ? "Extra Instructions: " + notes : ""}
 
 Please confirm this order.
 `;
@@ -594,10 +690,8 @@ Please confirm this order.
 
   try {
 
-    // Save the order to shared Firebase storage.
     await setDoc(doc(db, "orders", order.id), order);
 
-    // Keep the cart until Firebase confirms the save.
     const whatsappWindow = window.open(
       url,
       "_blank",
@@ -613,6 +707,19 @@ Please confirm this order.
     cart = [];
 
     save("cwh_cart", cart);
+
+    // Clear customization after successful order.
+    customization = "";
+
+    customizationSaved = false;
+
+    save("cwh_customization", "");
+
+    customizationText.value = "";
+
+    customizationPanel.classList.add("hidden");
+
+    updateCustomizationDisplay();
 
     updateCount();
 
@@ -794,6 +901,29 @@ function renderAdmin(logged = isAdmin) {
           <span class="tiny">
             ${escapeHtml(o.phone)} · ${escapeHtml(o.address)}
           </span>
+
+          ${
+            o.customization
+              ? `
+                <div class="order-customization">
+                  <b>✨ Customer Customization:</b>
+                  <br>
+                  ${escapeHtml(o.customization)}
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            o.notes
+              ? `
+                <div class="tiny">
+                  <b>Extra instructions:</b>
+                  ${escapeHtml(o.notes)}
+                </div>
+              `
+              : ""
+          }
 
           <br>
 
@@ -1040,6 +1170,8 @@ $("#exportOrders").onclick = () => {
       "Items",
       "Total",
       "Payment",
+      "Customization",
+      "Extra Instructions",
       "Status"
     ],
 
@@ -1057,6 +1189,8 @@ $("#exportOrders").onclick = () => {
 
       o.total,
       o.payment,
+      o.customization || "",
+      o.notes || "",
       o.status
 
     ])
@@ -1076,7 +1210,7 @@ $("#exportOrders").onclick = () => {
   const a = document.createElement("a");
 
   a.href = URL.createObjectURL(
-    new Blob([csv], { type: "text/csv" })
+    new Blob([csv], { type: "text/csv;charset=utf-8" })
   );
 
   a.download = "creative-world-orders.csv";
