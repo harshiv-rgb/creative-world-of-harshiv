@@ -1,4 +1,4 @@
-/* The Creative World of Harshiv — Firebase email/password sign-in. */
+/* The Creative World of Harshiv — Firebase synchronized shop */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 
@@ -13,7 +13,11 @@ import {
   getFirestore,
   doc,
   setDoc,
-  onSnapshot
+  onSnapshot,
+  collection,
+  deleteDoc,
+  updateDoc,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 
@@ -35,6 +39,9 @@ const db = getFirestore(firebaseApp);
 const ADMIN_UID = "7SgbiCsfqFS2WsxFV2sNXdBtCsR2";
 
 const shopSettingsRef = doc(db, "settings", "shop");
+
+const productsRef = collection(db, "products");
+const ordersRef = collection(db, "orders");
 
 
 const DEFAULT_PRODUCTS = [
@@ -71,6 +78,7 @@ const DEFAULT_PRODUCTS = [
 
 const $ = s => document.querySelector(s);
 
+
 const read = (key, fallback) => {
   try {
     const v = localStorage.getItem(key);
@@ -80,23 +88,31 @@ const read = (key, fallback) => {
   }
 };
 
+
 const save = (key, value) =>
   localStorage.setItem(key, JSON.stringify(value));
 
 
-let products = read("cwh_products", DEFAULT_PRODUCTS);
+let products = [];
 let cart = read("cwh_cart", []);
-let orders = read("cwh_orders", []);
+let orders = [];
 
 let settings = { whatsapp: "" };
+
 let shopSettingsLoaded = false;
+let isAdmin = false;
+let productSeedStarted = false;
+
+let ordersUnsubscribe = null;
 
 
-const money = n => "₹" + Number(n).toLocaleString("en-IN");
+const money = n =>
+  "₹" + Number(n).toLocaleString("en-IN");
 
 
 function toast(msg) {
   const t = $("#toast");
+
   t.textContent = msg;
   t.style.display = "block";
 
@@ -106,8 +122,20 @@ function toast(msg) {
 }
 
 
-// Load the shared WhatsApp number from Firebase.
-// Every device reads the same shop settings.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+
+
+// ------------------------------------
+// SHARED WHATSAPP SETTINGS
+// ------------------------------------
 
 onSnapshot(shopSettingsRef, snapshot => {
 
@@ -121,7 +149,6 @@ onSnapshot(shopSettingsRef, snapshot => {
 
   shopSettingsLoaded = true;
 
-  // Update the admin input when the shared number loads.
   const input = $("#settingsForm")?.elements?.whatsapp;
 
   if (input && document.activeElement !== input) {
@@ -130,14 +157,93 @@ onSnapshot(shopSettingsRef, snapshot => {
 
 }, error => {
 
-  console.error("Could not load shop settings:", error);
+  console.error(error);
 
   shopSettingsLoaded = false;
 
-  toast("Could not load shop details. Please check your internet connection.");
+  toast("Could not load shop settings.");
 
 });
 
+
+// ------------------------------------
+// SHARED PRODUCTS
+// ------------------------------------
+
+onSnapshot(productsRef, async snapshot => {
+
+  products = snapshot.docs.map(d => ({
+    ...d.data(),
+    id: d.id
+  }));
+
+  renderProducts();
+  renderCart();
+
+  if (isAdmin) {
+    renderAdmin();
+  }
+
+  // Initialize default products if Firebase is empty.
+  if (
+    snapshot.empty &&
+    isAdmin &&
+    !productSeedStarted
+  ) {
+
+    productSeedStarted = true;
+
+    try {
+
+      // Use the existing products on this device if available.
+      const localProducts = read(
+        "cwh_products",
+        DEFAULT_PRODUCTS
+      );
+
+      const initialProducts =
+        Array.isArray(localProducts) && localProducts.length
+          ? localProducts
+          : DEFAULT_PRODUCTS;
+
+      for (const p of initialProducts) {
+
+        await setDoc(doc(db, "products", String(p.id)), {
+          id: String(p.id),
+          name: String(p.name),
+          description: String(p.description || ""),
+          price: Number(p.price),
+          symbol: String(p.symbol || "🎁")
+        });
+
+      }
+
+      toast("Products uploaded to Firebase!");
+
+    } catch (error) {
+
+      console.error("Product initialization error:", error);
+
+      productSeedStarted = false;
+
+      toast("Could not initialize products.");
+
+    }
+
+  }
+
+}, error => {
+
+  console.error("Product loading error:", error);
+
+  toast("Could not load products. Check Firebase rules.");
+
+});
+
+
+// ------------------------------------
+// NAVIGATION
+// ------------------------------------
 
 function show(view) {
 
@@ -148,17 +254,23 @@ function show(view) {
   $("#" + view + "View").classList.remove("hidden");
 
   document.querySelectorAll(".nav-btn").forEach(b =>
-    b.classList.toggle("active", b.dataset.view === view)
+    b.classList.toggle(
+      "active",
+      b.dataset.view === view
+    )
   );
 
   if (view === "cart") renderCart();
 
   if (view === "admin") renderAdmin();
+
 }
 
 
 document.querySelectorAll(".nav-btn").forEach(b =>
-  b.addEventListener("click", () => show(b.dataset.view))
+  b.addEventListener("click", () =>
+    show(b.dataset.view)
+  )
 );
 
 
@@ -171,27 +283,24 @@ document.querySelectorAll("[data-go]").forEach(b =>
 );
 
 
+// ------------------------------------
+// CART
+// ------------------------------------
+
 function cartQty() {
   return cart.reduce((a, x) => a + x.qty, 0);
 }
 
 
-function escapeHtml(s) {
-
-  return String(s).replace(/[&<>"']/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[c]));
-
+function updateCount() {
+  $("#cartCount").textContent = cartQty();
 }
 
 
 function renderProducts() {
 
   $("#productGrid").innerHTML = products.map(p => `
+
     <article class="product">
 
       <div class="product-art">
@@ -206,11 +315,14 @@ function renderProducts() {
 
         <div class="price">${money(p.price)}</div>
 
-        <button data-add="${p.id}">Add to cart</button>
+        <button data-add="${escapeHtml(p.id)}">
+          Add to cart
+        </button>
 
       </div>
 
     </article>
+
   `).join("");
 
 
@@ -219,6 +331,7 @@ function renderProducts() {
     b.addEventListener("click", () => {
 
       const id = b.dataset.add;
+
       const item = cart.find(x => x.id === id);
 
       if (item) {
@@ -237,11 +350,6 @@ function renderProducts() {
 
   });
 
-}
-
-
-function updateCount() {
-  $("#cartCount").textContent = cartQty();
 }
 
 
@@ -276,7 +384,6 @@ function renderCart() {
 
   let total = 0;
 
-
   wrap.innerHTML = cart.map(item => {
 
     const p = products.find(x => x.id === item.id);
@@ -288,6 +395,7 @@ function renderCart() {
     total += line;
 
     return `
+
       <div class="cart-row">
 
         <div>
@@ -306,25 +414,28 @@ function renderCart() {
 
         <div class="qty">
 
-          <button data-dec="${p.id}" aria-label="Decrease">−</button>
+          <button data-dec="${escapeHtml(p.id)}">−</button>
 
           <b>${item.qty}</b>
 
-          <button data-inc="${p.id}" aria-label="Increase">+</button>
+          <button data-inc="${escapeHtml(p.id)}">+</button>
 
         </div>
 
-        <button class="remove" data-remove="${p.id}">
+        <button class="remove" data-remove="${escapeHtml(p.id)}">
           Remove
         </button>
 
       </div>
+
     `;
 
   }).join("") + `
+
     <div class="cart-total">
       Total: ${money(total)}
     </div>
+
   `;
 
 
@@ -342,7 +453,9 @@ function renderCart() {
 
     b.onclick = () => {
 
-      cart = cart.filter(x => x.id !== b.dataset.remove);
+      cart = cart.filter(x =>
+        x.id !== b.dataset.remove
+      );
 
       save("cwh_cart", cart);
 
@@ -374,54 +487,51 @@ function changeQty(id, delta) {
 }
 
 
-// CHECKOUT
+// ------------------------------------
+// CHECKOUT AND SHARED ORDERS
+// ------------------------------------
 
-$("#checkoutForm").addEventListener("submit", e => {
+$("#checkoutForm").addEventListener("submit", async e => {
 
   e.preventDefault();
 
   if (!cart.length) return;
 
-
   if (!shopSettingsLoaded) {
-
-    toast("Please wait while shop details load, then try again.");
-
+    toast("Please wait while shop details load.");
     return;
-
   }
-
 
   if (!settings.whatsapp) {
-
-    toast("Shop WhatsApp number is not configured yet. Please contact the shop owner.");
-
+    toast("Shop WhatsApp number is not configured.");
     return;
-
   }
-
 
   const f = new FormData(e.currentTarget);
 
-  const name = f.get("customerName").trim();
-  const phone = f.get("phone").trim();
-  const address = f.get("address").trim();
-  const notes = f.get("notes").trim();
+  const name = String(f.get("customerName") || "").trim();
+  const phone = String(f.get("phone") || "").trim();
+  const address = String(f.get("address") || "").trim();
+  const notes = String(f.get("notes") || "").trim();
 
 
   const items = cart.map(x => {
 
     const p = products.find(p => p.id === x.id);
 
-    return p
-      ? {
-          name: p.name,
-          price: p.price,
-          qty: x.qty
-        }
-      : null;
+    return p ? {
+      name: p.name,
+      price: Number(p.price),
+      qty: x.qty
+    } : null;
 
   }).filter(Boolean);
+
+
+  if (!items.length) {
+    toast("Your cart products are no longer available.");
+    return;
+  }
 
 
   const total = items.reduce(
@@ -449,13 +559,6 @@ $("#checkoutForm").addEventListener("submit", e => {
     status: "New"
 
   };
-
-
-  // Local copy only. Orders are not synced between devices.
-
-  orders.unshift(order);
-
-  save("cwh_orders", orders);
 
 
   const lines = items.map(x =>
@@ -489,23 +592,48 @@ Please confirm this order.
     `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(msg)}`;
 
 
-  window.open(url, "_blank", "noopener");
+  try {
 
+    // Save the order to shared Firebase storage.
+    await setDoc(doc(db, "orders", order.id), order);
 
-  cart = [];
+    // Keep the cart until Firebase confirms the save.
+    const whatsappWindow = window.open(
+      url,
+      "_blank",
+      "noopener"
+    );
 
-  save("cwh_cart", cart);
+    if (!whatsappWindow) {
+      toast("Order saved! Please open WhatsApp to send it.");
+    } else {
+      toast("Order saved! Press Send in WhatsApp.");
+    }
 
-  updateCount();
+    cart = [];
 
-  e.currentTarget.reset();
+    save("cwh_cart", cart);
 
-  toast("WhatsApp opened. Press Send to notify the shop.");
+    updateCount();
+
+    renderCart();
+
+    e.currentTarget.reset();
+
+  } catch (error) {
+
+    console.error("Order saving error:", error);
+
+    toast("Order could not be saved. Please try again.");
+
+  }
 
 });
 
 
+// ------------------------------------
 // ADMIN LOGIN
+// ------------------------------------
 
 $("#loginForm").addEventListener("submit", async e => {
 
@@ -517,33 +645,28 @@ $("#loginForm").addEventListener("submit", async e => {
 
   const password = String(form.get("password") || "");
 
-
   try {
 
     const credential =
       await signInWithEmailAndPassword(auth, email, password);
 
-
-    if (
-      ADMIN_UID === "PASTE_YOUR_ADMIN_UID_HERE" ||
-      credential.user.uid !== ADMIN_UID
-    ) {
+    if (credential.user.uid !== ADMIN_UID) {
 
       await signOut(auth);
 
-      toast("This Firebase account is not authorized as the shop admin.");
+      toast("This account is not authorized as admin.");
 
     }
 
   } catch (error) {
 
+    console.error(error);
+
     toast(
       error.code === "auth/invalid-credential"
         ? "Incorrect email or password."
-        : "Sign-in failed. Check your details and Firebase settings."
+        : "Sign-in failed. Check your Firebase settings."
     );
-
-    console.error("Firebase sign-in error:", error);
 
   }
 
@@ -552,45 +675,81 @@ $("#loginForm").addEventListener("submit", async e => {
 
 $("#logoutBtn").onclick = async () => {
 
-  try {
-
-    await signOut(auth);
-
-  } catch (error) {
-
-    console.error(error);
-
-    toast("Could not log out. Please try again.");
-
-  }
+  await signOut(auth);
 
 };
 
 
+// ------------------------------------
+// SHARED ADMIN ORDERS
+// ------------------------------------
+
+function listenToOrders() {
+
+  if (ordersUnsubscribe) {
+    ordersUnsubscribe();
+    ordersUnsubscribe = null;
+  }
+
+  ordersUnsubscribe = onSnapshot(ordersRef, snapshot => {
+
+    orders = snapshot.docs.map(d => d.data());
+
+    orders.sort((a, b) =>
+      b.id.localeCompare(a.id)
+    );
+
+    if (isAdmin) {
+      renderAdmin();
+    }
+
+  }, error => {
+
+    console.error("Orders loading error:", error);
+
+    toast("Could not load orders. Check Firebase rules.");
+
+  });
+
+}
+
+
+// ------------------------------------
+// AUTHENTICATION STATE
+// ------------------------------------
+
 onAuthStateChanged(auth, user => {
 
   const allowed =
-    !!user &&
-    ADMIN_UID !== "PASTE_YOUR_ADMIN_UID_HERE" &&
-    user.uid === ADMIN_UID;
+    !!user && user.uid === ADMIN_UID;
 
+  isAdmin = allowed;
 
-  if (user && !allowed) {
-    signOut(auth).catch(console.error);
+  if (allowed) {
+
+    listenToOrders();
+
+  } else {
+
+    if (ordersUnsubscribe) {
+      ordersUnsubscribe();
+      ordersUnsubscribe = null;
+    }
+
+    orders = [];
+
   }
-
 
   renderAdmin(allowed);
 
 });
 
 
+// ------------------------------------
 // ADMIN DASHBOARD
+// ------------------------------------
 
-function renderAdmin(
-  logged = !!auth.currentUser &&
-  auth.currentUser.uid === ADMIN_UID
-) {
+function renderAdmin(logged = isAdmin) {
 
   $("#adminLogin").classList.toggle("hidden", logged);
 
@@ -603,6 +762,8 @@ function renderAdmin(
 
   $("#productTotal").textContent = products.length;
 
+
+  // ORDERS
 
   $("#ordersList").innerHTML = orders.length
 
@@ -636,11 +797,11 @@ function renderAdmin(
 
           <br>
 
-          <button class="secondary-btn" data-status="${o.id}">
+          <button class="secondary-btn" data-status="${escapeHtml(o.id)}">
             Mark confirmed
           </button>
 
-          <button class="secondary-btn" data-delete-order="${o.id}">
+          <button class="secondary-btn" data-delete-order="${escapeHtml(o.id)}">
             Delete
           </button>
 
@@ -648,20 +809,29 @@ function renderAdmin(
 
       `).join("")
 
-    : '<p class="muted">No orders saved in this browser yet.</p>';
+    : '<p class="muted">No new orders yet.</p>';
 
 
   document.querySelectorAll("[data-status]").forEach(b => {
 
-    b.onclick = () => {
+    b.onclick = async () => {
 
-      const o = orders.find(x => x.id === b.dataset.status);
+      try {
 
-      if (o) o.status = "Confirmed";
+        await updateDoc(
+          doc(db, "orders", b.dataset.status),
+          { status: "Confirmed" }
+        );
 
-      save("cwh_orders", orders);
+        toast("Order confirmed.");
 
-      renderAdmin();
+      } catch (error) {
+
+        console.error(error);
+
+        toast("Could not update order.");
+
+      }
 
     };
 
@@ -670,28 +840,40 @@ function renderAdmin(
 
   document.querySelectorAll("[data-delete-order]").forEach(b => {
 
-    b.onclick = () => {
+    b.onclick = async () => {
 
-      orders = orders.filter(x =>
-        x.id !== b.dataset.deleteOrder
-      );
+      try {
 
-      save("cwh_orders", orders);
+        await deleteDoc(
+          doc(db, "orders", b.dataset.deleteOrder)
+        );
 
-      renderAdmin();
+        toast("Order deleted.");
+
+      } catch (error) {
+
+        console.error(error);
+
+        toast("Could not delete order.");
+
+      }
 
     };
 
   });
 
 
+  // PRODUCTS
+
   $("#adminProducts").innerHTML = products.map(p => `
 
     <div class="admin-product">
 
-      <span>${escapeHtml(p.name)} — ${money(p.price)}</span>
+      <span>
+        ${escapeHtml(p.name)} — ${money(p.price)}
+      </span>
 
-      <button class="secondary-btn" data-del-product="${p.id}">
+      <button class="secondary-btn" data-del-product="${escapeHtml(p.id)}">
         Delete
       </button>
 
@@ -702,17 +884,23 @@ function renderAdmin(
 
   document.querySelectorAll("[data-del-product]").forEach(b => {
 
-    b.onclick = () => {
+    b.onclick = async () => {
 
-      products = products.filter(p =>
-        p.id !== b.dataset.delProduct
-      );
+      try {
 
-      save("cwh_products", products);
+        await deleteDoc(
+          doc(db, "products", b.dataset.delProduct)
+        );
 
-      renderProducts();
+        toast("Product deleted.");
 
-      renderAdmin();
+      } catch (error) {
+
+        console.error(error);
+
+        toast("Could not delete product.");
+
+      }
 
     };
 
@@ -725,56 +913,77 @@ function renderAdmin(
 }
 
 
-// ADD PRODUCT
+// ------------------------------------
+// ADD PRODUCT TO FIREBASE
+// ------------------------------------
 
-$("#productForm").addEventListener("submit", e => {
+$("#productForm").addEventListener("submit", async e => {
 
   e.preventDefault();
 
+  if (!isAdmin) {
+    toast("Admin access required.");
+    return;
+  }
+
   const f = new FormData(e.currentTarget);
 
-
-  products.push({
+  const product = {
 
     id: "p" + Date.now(),
 
-    name: f.get("name").trim(),
+    name: String(f.get("name") || "").trim(),
 
     price: Number(f.get("price")),
 
-    description: f.get("description").trim(),
+    description: String(f.get("description") || "").trim(),
 
-    symbol: f.get("symbol").trim() || "🎁"
+    symbol: String(f.get("symbol") || "").trim() || "🎁"
 
-  });
+  };
 
 
-  save("cwh_products", products);
+  if (!product.name || !Number.isFinite(product.price) || product.price < 0) {
+    toast("Enter a valid product name and price.");
+    return;
+  }
 
-  e.currentTarget.reset();
 
-  renderProducts();
+  try {
 
-  renderAdmin();
+    await setDoc(
+      doc(db, "products", product.id),
+      product
+    );
 
-  toast("Product added on this device.");
+    e.currentTarget.reset();
+
+    toast("Product added for all devices!");
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast("Could not add product. Check Firebase rules.");
+
+  }
 
 });
 
 
-// SAVE WHATSAPP NUMBER TO FIREBASE
+// ------------------------------------
+// SAVE WHATSAPP NUMBER
+// ------------------------------------
 
 $("#settingsForm").addEventListener("submit", async e => {
 
   e.preventDefault();
 
-
   const user = auth.currentUser;
-
 
   if (!user || user.uid !== ADMIN_UID) {
 
-    toast("Only the authorized admin can change the WhatsApp number.");
+    toast("Only the authorized admin can change this number.");
 
     return;
 
@@ -801,21 +1010,22 @@ $("#settingsForm").addEventListener("submit", async e => {
       whatsapp: n
     });
 
-
-    toast("WhatsApp number saved for all devices.");
+    toast("WhatsApp number saved for all devices!");
 
   } catch (error) {
 
-    console.error("WhatsApp settings save error:", error);
+    console.error(error);
 
-    toast("Could not save the number. Check your internet and Firebase rules.");
+    toast("Could not save WhatsApp number.");
 
   }
 
 });
 
 
-// EXPORT ORDERS
+// ------------------------------------
+// EXPORT SHARED ORDERS
+// ------------------------------------
 
 $("#exportOrders").onclick = () => {
 
@@ -878,7 +1088,9 @@ $("#exportOrders").onclick = () => {
 };
 
 
+// ------------------------------------
 // INITIALIZE WEBSITE
+// ------------------------------------
 
 renderProducts();
 
@@ -894,7 +1106,7 @@ if (
 
     navigator.serviceWorker
       .register("./service-worker.js")
-      .catch(() => {});
+      .catch(console.error);
 
   });
 
