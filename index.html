@@ -9,6 +9,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
 
 <header class="topbar">
@@ -29,14 +30,27 @@
 
 <main>
 
+<!-- SHOP PAGE -->
+
 <section id="shopView" class="view">
 
   <div class="hero">
     <div>
       <p class="eyebrow">HANDMADE • PERSONALIZED • CREATIVE</p>
-      <h1>Little creations.<br><em>Big imagination.</em></h1>
-      <p>Discover thoughtful handmade gifts, useful creations and fun school projects.</p>
-      <button class="primary-btn" data-go="catalog">Explore products</button>
+
+      <h1>
+        Little creations.<br>
+        <em>Big imagination.</em>
+      </h1>
+
+      <p>
+        Discover thoughtful handmade gifts, useful creations
+        and fun school projects.
+      </p>
+
+      <button class="primary-btn" data-go="catalog">
+        Explore products
+      </button>
     </div>
 
     <div class="hero-art" aria-hidden="true">
@@ -47,23 +61,31 @@
   </div>
 
   <section class="section" id="catalog">
+
     <div class="section-head">
       <div>
         <p class="eyebrow">OUR COLLECTION</p>
         <h2>Shop our creations</h2>
       </div>
-      <p class="muted">Choose an item to add it to your cart.</p>
+
+      <p class="muted">
+        Choose an item to add it to your cart.
+      </p>
     </div>
 
     <div id="productGrid" class="product-grid"></div>
+
   </section>
 
 </section>
 
 
+<!-- CART PAGE -->
+
 <section id="cartView" class="view hidden section">
 
   <p class="eyebrow">YOUR SELECTION</p>
+
   <h1 class="page-title">Shopping cart</h1>
 
   <div id="cartContents"></div>
@@ -76,23 +98,69 @@
 
       <label>
         Customer name
-        <input name="customerName" required maxlength="80" autocomplete="name">
+        <input
+          name="customerName"
+          required
+          maxlength="80"
+          autocomplete="name"
+        >
       </label>
 
       <label>
         Mobile number
-        <input name="phone" required inputmode="tel" pattern="[0-9+() -]{8,18}" maxlength="18" autocomplete="tel">
+        <input
+          name="phone"
+          required
+          inputmode="tel"
+          pattern="[0-9+() -]{8,18}"
+          maxlength="18"
+          autocomplete="tel"
+        >
       </label>
 
       <label>
         Full delivery address
-        <textarea name="address" required maxlength="400" rows="3" autocomplete="street-address"></textarea>
+        <textarea
+          name="address"
+          required
+          maxlength="400"
+          rows="3"
+          autocomplete="street-address"
+        ></textarea>
       </label>
 
       <label>
         Extra instructions (optional)
-        <textarea name="notes" maxlength="300" rows="2"></textarea>
+        <textarea
+          name="notes"
+          maxlength="300"
+          rows="2"
+        ></textarea>
       </label>
+
+
+      <!-- PRICE BREAKDOWN -->
+
+      <div class="price-summary" id="checkoutPriceSummary">
+
+        <h3>Order price details</h3>
+
+        <div class="price-summary-row">
+          <span>Product subtotal</span>
+          <b id="checkoutSubtotal">₹0</b>
+        </div>
+
+        <div class="price-summary-row">
+          <span>Delivery charges</span>
+          <b id="checkoutDelivery">₹30</b>
+        </div>
+
+        <div class="price-summary-row final-price">
+          <span>Final total</span>
+          <b id="checkoutTotal">₹30</b>
+        </div>
+
+      </div>
 
 
       <!-- CUSTOMIZATION FEATURE -->
@@ -100,17 +168,19 @@
       <div class="customization-box">
 
         <div class="customization-heading">
+
           <div>
             <span class="customization-icon">✨</span>
             <b>Customize Your Product</b>
           </div>
 
           <span class="optional-label">Optional</span>
+
         </div>
 
         <p>
-          Want something special? Tell us how you would like your
-          product to be customized!
+          Want something special? Tell us how you would like
+          your product to be customized!
         </p>
 
         <button
@@ -144,26 +214,39 @@
 
         </div>
 
-        <div id="customizationSaved" class="customization-saved hidden">
+        <div
+          id="customizationSaved"
+          class="customization-saved hidden"
+        >
           ✅ Customization saved successfully!
         </div>
 
       </div>
 
 
+      <!-- PAYMENT METHOD -->
+
       <div class="payment-choice">
+
         <b>Payment method</b>
+
         <span>Cash on Delivery (COD) — only option</span>
-        <small>Pay in cash when your order is delivered.</small>
+
+        <small>
+          Pay in cash when your order is delivered.
+        </small>
+
       </div>
+
 
       <button class="primary-btn wide" type="submit">
         Place COD order via WhatsApp
       </button>
 
       <p class="tiny muted">
-        When you place the order, WhatsApp will open with your order details.
-        Please press Send in WhatsApp to notify the shop.
+        When you place the order, WhatsApp will open with your
+        order details. Please press Send in WhatsApp to notify
+        the shop.
       </p>
 
     </form>
@@ -173,10 +256,16 @@
 </section>
 
 
+<!-- ADMIN PAGE -->
+
 <section id="adminView" class="view hidden section">
 
   <p class="eyebrow">STORE MANAGEMENT</p>
+
   <h1 class="page-title">Admin dashboard</h1>
+
+
+  <!-- ADMIN LOGIN -->
 
   <div id="adminLogin" class="panel narrow">
 
@@ -190,15 +279,27 @@
 
       <label>
         Admin email
-        <input name="email" type="email" autocomplete="username" required>
+        <input
+          name="email"
+          type="email"
+          autocomplete="username"
+          required
+        >
       </label>
 
       <label>
         Password
-        <input name="password" type="password" autocomplete="current-password" required>
+        <input
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
       </label>
 
-      <button class="primary-btn wide" type="submit">Sign in</button>
+      <button class="primary-btn wide" type="submit">
+        Sign in
+      </button>
 
     </form>
 
@@ -209,12 +310,24 @@
   </div>
 
 
+  <!-- ADMIN DASHBOARD CONTENT -->
+
   <div id="adminPanel" class="hidden">
 
     <div class="admin-actions">
-      <button class="secondary-btn" id="exportOrders">Export orders (CSV)</button>
-      <button class="secondary-btn" id="logoutBtn">Log out</button>
+
+      <button class="secondary-btn" id="exportOrders">
+        Export orders (CSV)
+      </button>
+
+      <button class="secondary-btn" id="logoutBtn">
+        Log out
+      </button>
+
     </div>
+
+
+    <!-- STATISTICS -->
 
     <div class="stats">
 
@@ -231,6 +344,8 @@
     </div>
 
 
+    <!-- ORDERS -->
+
     <div class="panel">
 
       <h2>Orders</h2>
@@ -244,9 +359,16 @@
     </div>
 
 
+    <!-- MANAGE PRODUCTS -->
+
     <div class="panel">
 
-      <h2>Manage products on this device</h2>
+      <h2>Manage products</h2>
+
+      <p class="tiny muted">
+        Add a product photo from your device. Images are shared
+        with customers on all devices.
+      </p>
 
       <form id="productForm" class="product-form">
 
@@ -257,7 +379,13 @@
 
         <label>
           Price (₹)
-          <input name="price" type="number" min="0" step="1" required>
+          <input
+            name="price"
+            type="number"
+            min="0"
+            step="1"
+            required
+          >
         </label>
 
         <label>
@@ -270,7 +398,29 @@
           <input name="symbol" maxlength="4" value="🎁">
         </label>
 
-        <button class="primary-btn">Add product</button>
+        <label class="image-upload-label">
+          Product picture (optional)
+
+          <input
+            id="productImage"
+            name="productImage"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+          >
+
+          <small class="tiny muted">
+            JPG, PNG, WEBP or GIF · Maximum 5 MB
+          </small>
+        </label>
+
+        <div
+          id="productImagePreview"
+          class="image-preview hidden"
+        ></div>
+
+        <button class="primary-btn" type="submit">
+          Add product
+        </button>
 
       </form>
 
@@ -279,25 +429,34 @@
     </div>
 
 
+    <!-- WHATSAPP SETTINGS -->
+
     <div class="panel">
 
       <h2>WhatsApp shop number</h2>
 
       <p class="tiny muted">
-        Enter the shop's WhatsApp number with country code, digits only.
-        For India, start with 91.
-        This number is saved securely in Firebase and shared across all devices.
-        Only the authorized admin can change it.
+        Enter the shop's WhatsApp number with country code,
+        digits only. For India, start with 91.
+        This number is saved securely in Firebase and shared
+        across all devices. Only the authorized admin can change it.
       </p>
 
       <form id="settingsForm">
 
         <label>
           WhatsApp number
-          <input name="whatsapp" inputmode="numeric" placeholder="91XXXXXXXXXX" required>
+          <input
+            name="whatsapp"
+            inputmode="numeric"
+            placeholder="91XXXXXXXXXX"
+            required
+          >
         </label>
 
-        <button class="primary-btn">Save number</button>
+        <button class="primary-btn" type="submit">
+          Save number
+        </button>
 
       </form>
 
@@ -309,6 +468,8 @@
 
 </main>
 
+
+<!-- FOOTER -->
 
 <footer>
 
@@ -323,23 +484,29 @@
 </footer>
 
 
+<!-- NOTIFICATION -->
+
 <div id="toast" role="status" aria-live="polite"></div>
 
+
+<!-- JAVASCRIPT -->
 
 <script type="module" src="app.js"></script>
 
 
-<div style="position:fixed;bottom:15px;right:15px;z-index:9999;display:flex;flex-direction:column;gap:10px;">
+<!-- CONTACT BUTTONS -->
 
-  <a href="tel:+919780736653" style="background:#16833b;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">
+<div class="contact-buttons">
+
+  <a href="tel:+919780736653" class="call-link">
     📞 Call Us
   </a>
 
-  <a href="https://wa.me/919780736653" style="background:#25D366;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">
+  <a href="https://wa.me/919780736653" class="whatsapp-link">
     WhatsApp 1
   </a>
 
-  <a href="https://wa.me/918558888095" style="background:#25D366;color:white;padding:12px 18px;border-radius:30px;text-decoration:none;">
+  <a href="https://wa.me/918558888095" class="whatsapp-link">
     WhatsApp 2
   </a>
 
