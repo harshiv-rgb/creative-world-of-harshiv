@@ -5,6 +5,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebas
 import {
   getAuth,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
@@ -15,6 +16,8 @@ import {
   setDoc,
   onSnapshot,
   collection,
+  query,
+  where,
   deleteDoc,
   updateDoc
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
@@ -129,9 +132,12 @@ let customizationSaved = Boolean(customization);
 
 let shopSettingsLoaded = false;
 let isAdmin = false;
+let currentUser = null;
+let customerOrders = [];
 let productSeedStarted = false;
 
 let ordersUnsubscribe = null;
+let customerOrdersUnsubscribe = null;
 let previewObjectUrl = null;
 
 
@@ -323,6 +329,10 @@ function show(view) {
 
   if (view === "admin") {
     renderAdmin();
+  }
+
+  if (view === "account") {
+    renderCustomerAccount();
   }
 
 }
@@ -679,6 +689,12 @@ $("#checkoutForm").addEventListener("submit", async e => {
 
   if (!cart.length) return;
 
+  if (!currentUser || currentUser.uid === ADMIN_UID) {
+    toast("Please sign in with your customer account before ordering.");
+    show("account");
+    return;
+  }
+
   if (!shopSettingsLoaded) {
 
     toast("Please wait while shop details load.");
@@ -741,7 +757,7 @@ $("#checkoutForm").addEventListener("submit", async e => {
 
 
   const subtotal = items.reduce(
-    (s, x) => s + x.price * x.qty,
+    (s, x) => s + x.price * x.qty,    (s, x) => s + x.price * x.qty,
     0
   );
 
@@ -758,6 +774,10 @@ $("#checkoutForm").addEventListener("submit", async e => {
   const order = {
 
     id: "CWH-" + Date.now().toString().slice(-8),
+
+    customerUid: currentUser.uid,
+
+    customerEmail: currentUser.email || "",
 
     date: new Date().toLocaleString(),
 
@@ -899,6 +919,142 @@ Please confirm this order.
 });
 
 
+/* CUSTOMER ACCOUNT AND ORDER HISTORY */
+
+function renderCustomerAccount() {
+  const user = currentUser && currentUser.uid !== ADMIN_UID ? currentUser : null;
+  $("#customerSignedOut").classList.toggle("hidden", !!user);
+  $("#customerSignedIn").classList.toggle("hidden", !user);
+  if (user) {
+    $("#customerEmail").textContent = user.email || "Customer";
+    renderCustomerOrders();
+  }
+}
+
+function listenToCustomerOrders(user) {
+  if (customerOrdersUnsubscribe) {
+    customerOrdersUnsubscribe();
+    customerOrdersUnsubscribe = null;
+  }
+  customerOrders = [];
+  if (!user || user.uid === ADMIN_UID) {
+    renderCustomerOrders();
+    return;
+  }
+  const ownOrdersQuery = query(ordersRef, where("customerUid", "==", user.uid));
+  customerOrdersUnsubscribe = onSnapshot(ownOrdersQuery, snapshot => {
+    customerOrders = snapshot.docs.map(d => d.data());
+    customerOrders.sort((a,b) => String(b.date || "").localeCompare(String(a.date || "")));
+    renderCustomerOrders();
+  }, error => {
+    console.error("Customer orders loading error:", error);
+    $("#customerOrdersList").innerHTML = '<p class="muted">Could not load orders. Please check Firestore rules.</p>';
+  });
+}
+
+function renderCustomerOrders() {
+  const host = $("#customerOrdersList");
+  if (!host) return;
+  if (!currentUser || currentUser.uid === ADMIN_UID) {
+    host.innerHTML = '<p class="muted">Sign in with a customer account to see your orders.</p>';
+    return;
+  }
+  if (!customerOrders.length) {
+    host.innerHTML = '<p class="muted">You have no orders yet. Your new orders will appear here.</p>';
+    return;
+  }
+  host.innerHTML = customerOrders.map(o => {
+    const subtotal = Number(o.subtotal || 0);
+    const delivery = Number(o.deliveryCharge ?? DELIVERY_CHARGE);
+    const extra = Number(o.extraCharges || 0);
+    const total = Number(o.total ?? subtotal + delivery + extra);
+    const pending = o.returnRequestStatus === "Pending";
+    const requestStatus = o.returnRequestStatus || "No request";
+    return `<article class="customer-order-card">
+      <b>${escapeHtml(o.id)} — ${escapeHtml(o.date || "")}</b><br>
+      <span class="status-pill">${escapeHtml(o.status || "New")}</span>
+      <p>${(o.items || []).map(i => `${escapeHtml(i.name)} × ${Number(i.qty || 0)}`).join("<br>")}</p>
+      <div class="price-summary">
+        <div class="price-summary-row"><span>Product subtotal</span><b>${money(subtotal)}</b></div>
+        <div class="price-summary-row"><span>Delivery charge</span><b>${money(delivery)}</b></div>
+        <div class="price-summary-row"><span>Additional charge</span><b>${money(extra)}</b></div>
+        <div class="price-summary-row final-price"><span>Final total</span><b>${money(total)}</b></div>
+      </div>
+      ${o.extraChargeReason ? `<div class="order-customization"><b>Additional charge reason:</b><br>${escapeHtml(o.extraChargeReason)}</div>` : ""}
+      <div class="request-box">
+        <b>Return / replacement request:</b> <span class="status-pill">${escapeHtml(requestStatus)}</span>
+        ${o.returnRequestType ? `<p><b>Type:</b> ${escapeHtml(o.returnRequestType)}<br><b>Reason:</b> ${escapeHtml(o.returnRequestReason || "")}</p>` : ""}
+        ${pending ? '<p class="tiny muted">Your request is waiting for the shop to review it.</p>' : `
+          <form data-customer-request="${escapeHtml(o.id)}">
+            <label>Request type<select name="type" required><option value="">Choose one</option><option value="Return">Return</option><option value="Replacement">Replacement</option></select></label>
+            <label>Reason<textarea name="reason" rows="3" maxlength="500" required placeholder="Please explain why you are requesting this."></textarea></label>
+            <button class="primary-btn" type="submit">Send request</button>
+          </form>`}
+      </div>
+    </article>`;
+  }).join("");
+  host.querySelectorAll("[data-customer-request]").forEach(form => {
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const user = auth.currentUser;
+      if (!user || user.uid === ADMIN_UID) return toast("Please sign in to your customer account.");
+      const data = new FormData(form);
+      const type = String(data.get("type") || "");
+      const reason = String(data.get("reason") || "").trim();
+      if (!["Return", "Replacement"].includes(type) || !reason) return toast("Choose a request type and enter a reason.");
+      const button = form.querySelector("button[type=submit]");
+      button.disabled = true;
+      try {
+        await updateDoc(doc(db, "orders", form.dataset.customerRequest), {
+          returnRequestType: type,
+          returnRequestReason: reason,
+          returnRequestStatus: "Pending",
+          returnRequestedAt: new Date().toISOString()
+        });
+        toast("Your request has been sent to the shop.");
+      } catch (error) {
+        console.error("Return/replacement request error:", error);
+        toast("Could not send the request. Please check Firestore rules.");
+        button.disabled = false;
+      }
+    });
+  });
+}
+
+$("#customerLoginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const data = new FormData(e.currentTarget);
+  try {
+    const result = await signInWithEmailAndPassword(auth, String(data.get("email")).trim(), String(data.get("password")));
+    if (result.user.uid === ADMIN_UID) { await signOut(auth); toast("Please use the Admin page for the admin account."); return; }
+    e.currentTarget.reset();
+    toast("Signed in successfully.");
+  } catch (error) {
+    console.error(error);
+    toast(error.code === "auth/invalid-credential" ? "Incorrect email or password." : "Could not sign in. Check the details and try again.");
+  }
+});
+
+$("#customerRegisterForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const data = new FormData(e.currentTarget);
+  try {
+    const result = await createUserWithEmailAndPassword(auth, String(data.get("email")).trim(), String(data.get("password")));
+    if (result.user.uid === ADMIN_UID) { await signOut(auth); return; }
+    e.currentTarget.reset();
+    toast("Customer account created successfully.");
+  } catch (error) {
+    console.error(error);
+    toast(error.code === "auth/email-already-in-use" ? "This email already has an account. Please sign in." : error.code === "auth/weak-password" ? "Choose a stronger password with at least 6 characters." : "Could not create account. Check Firebase Authentication settings.");
+  }
+});
+
+$("#customerLogoutBtn").onclick = async () => {
+  try { await signOut(auth); toast("You have signed out."); }
+  catch (error) { console.error(error); toast("Could not sign out."); }
+};
+
+
 /* ADMIN LOGIN */
 
 $("#loginForm").addEventListener("submit", async e => {
@@ -1001,32 +1157,26 @@ function listenToOrders() {
 
 onAuthStateChanged(auth, user => {
 
+  currentUser = user || null;
   const allowed = !!user && user.uid === ADMIN_UID;
-
   isAdmin = allowed;
 
-
   if (allowed) {
-
+    if (customerOrdersUnsubscribe) { customerOrdersUnsubscribe(); customerOrdersUnsubscribe = null; }
+    customerOrders = [];
     listenToOrders();
-
   } else {
-
-    if (ordersUnsubscribe) {
-
-      ordersUnsubscribe();
-
-      ordersUnsubscribe = null;
-
-    }
-
+    if (ordersUnsubscribe) { ordersUnsubscribe(); ordersUnsubscribe = null; }
     orders = [];
-
+    if (user) listenToCustomerOrders(user);
+    else {
+      if (customerOrdersUnsubscribe) { customerOrdersUnsubscribe(); customerOrdersUnsubscribe = null; }
+      customerOrders = [];
+    }
   }
 
-
   renderAdmin(allowed);
-
+  renderCustomerAccount();
 });
 
 
@@ -1174,6 +1324,18 @@ function renderAdmin(logged = isAdmin) {
             }
 
 
+            ${o.returnRequestType ? `
+              <div class="request-box">
+                <b>Customer ${escapeHtml(o.returnRequestType)} request</b><br>
+                <span class="status-pill">${escapeHtml(o.returnRequestStatus || "Pending")}</span>
+                <p>${escapeHtml(o.returnRequestReason || "No reason supplied")}</p>
+                ${o.returnRequestStatus === "Pending" ? `
+                  <button class="primary-btn" data-return-decision="${escapeHtml(o.id)}" data-decision="Approved">Approve</button>
+                  <button class="secondary-btn" data-return-decision="${escapeHtml(o.id)}" data-decision="Rejected">Reject</button>
+                ` : ""}
+              </div>
+            ` : ""}
+
             <br>
 
             <button
@@ -1244,6 +1406,23 @@ function renderAdmin(logged = isAdmin) {
       }).join("")
 
     : '<p class="muted">No new orders yet.</p>';
+
+
+  /* APPROVE OR REJECT CUSTOMER RETURN / REPLACEMENT REQUESTS */
+  document.querySelectorAll("[data-return-decision]").forEach(b => {
+    b.onclick = async () => {
+      if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) return toast("Admin access required.");
+      try {
+        await updateDoc(doc(db, "orders", b.dataset.returnDecision), {
+          returnRequestStatus: b.dataset.decision
+        });
+        toast(`Customer request ${b.dataset.decision.toLowerCase()}.`);
+      } catch (error) {
+        console.error(error);
+        toast("Could not update the customer request.");
+      }
+    };
+  });
 
 
   /* MARK ORDER CONFIRMED */
@@ -1340,10 +1519,7 @@ function renderAdmin(logged = isAdmin) {
 
         return;
 
-      }
-
-
-      if (amount > 0 && !reason) {
+      }      if (amount > 0 && !reason) {
 
         toast("Please enter the reason for the extra charge.");
 
@@ -1999,6 +2175,7 @@ $("#exportOrders").onclick = () => {
       "Order ID",
       "Date",
       "Customer",
+      "Customer Email",
       "Phone",
       "Address",
       "Items",
@@ -2020,6 +2197,8 @@ $("#exportOrders").onclick = () => {
       o.date,
 
       o.name,
+
+      o.customerEmail || "",
 
       o.phone,
 
