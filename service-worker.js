@@ -19,20 +19,22 @@ self.addEventListener("install", event => {
   );
 });
 
-// Activate new version and remove old caches
+// Activate new version and remove older website caches
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(key => key !== CACHE)
+          .filter(key =>
+            key.startsWith("cwh-pwa-") && key !== CACHE
+          )
           .map(key => caches.delete(key))
       )
     ).then(() => self.clients.claim())
   );
 });
 
-// Fetch updated HTML and JavaScript from the server
+// Fetch updated files from the server
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
