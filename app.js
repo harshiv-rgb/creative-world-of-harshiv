@@ -19,6 +19,16 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-storage.js";
+
+
+/* FIREBASE CONFIGURATION */
 
 const firebaseConfig = {
   apiKey: "AIzaSyDPqL93rmuXdrIJPkejOL_cjod2VTcgNzM",
@@ -34,14 +44,27 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
+const storage = getStorage(firebaseApp);
 
 const ADMIN_UID = "7SgbiCsfqFS2WsxFV2sNXdBtCsR2";
 
 const shopSettingsRef = doc(db, "settings", "shop");
-
 const productsRef = collection(db, "products");
 const ordersRef = collection(db, "orders");
 
+const DELIVERY_CHARGE = 30;
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif"
+];
+
+
+/* DEFAULT PRODUCTS */
 
 const DEFAULT_PRODUCTS = [
   {
@@ -75,8 +98,9 @@ const DEFAULT_PRODUCTS = [
 ];
 
 
-const $ = s => document.querySelector(s);
+/* BASIC HELPERS */
 
+const $ = s => document.querySelector(s);
 
 const read = (key, fallback) => {
   try {
@@ -87,9 +111,11 @@ const read = (key, fallback) => {
   }
 };
 
-
 const save = (key, value) =>
   localStorage.setItem(key, JSON.stringify(value));
+
+const money = n =>
+  "₹" + Number(n || 0).toLocaleString("en-IN");
 
 
 let products = [];
@@ -99,7 +125,6 @@ let orders = [];
 let settings = { whatsapp: "" };
 
 let customization = read("cwh_customization", "");
-
 let customizationSaved = Boolean(customization);
 
 let shopSettingsLoaded = false;
@@ -107,10 +132,7 @@ let isAdmin = false;
 let productSeedStarted = false;
 
 let ordersUnsubscribe = null;
-
-
-const money = n =>
-  "₹" + Number(n).toLocaleString("en-IN");
+let previewObjectUrl = null;
 
 
 function toast(msg) {
@@ -136,9 +158,48 @@ function escapeHtml(s) {
 }
 
 
-// ------------------------------------
-// SHARED WHATSAPP SETTINGS
-// ------------------------------------
+/* PRICE CALCULATIONS */
+
+function getSubtotal(items = cart) {
+  return items.reduce((sum, item) => {
+    const product = products.find(p => p.id === item.id);
+
+    if (!product) return sum;
+
+    return sum + Number(product.price) * Number(item.qty);
+  }, 0);
+}
+
+
+function getFinalTotal(subtotal, extraCharges = 0) {
+  return Number(subtotal) + DELIVERY_CHARGE + Number(extraCharges || 0);
+}
+
+
+function updateCheckoutPrices() {
+  const subtotal = getSubtotal();
+
+  const subtotalElement = $("#checkoutSubtotal");
+  const deliveryElement = $("#checkoutDelivery");
+  const totalElement = $("#checkoutTotal");
+
+  if (subtotalElement) {
+    subtotalElement.textContent = money(subtotal);
+  }
+
+  if (deliveryElement) {
+    deliveryElement.textContent = money(DELIVERY_CHARGE);
+  }
+
+  if (totalElement) {
+    totalElement.textContent = money(
+      getFinalTotal(subtotal)
+    );
+  }
+}
+
+
+/* SHARED WHATSAPP SETTINGS */
 
 onSnapshot(shopSettingsRef, snapshot => {
 
@@ -169,9 +230,7 @@ onSnapshot(shopSettingsRef, snapshot => {
 });
 
 
-// ------------------------------------
-// SHARED PRODUCTS
-// ------------------------------------
+/* SHARED PRODUCTS */
 
 onSnapshot(productsRef, async snapshot => {
 
@@ -187,11 +246,7 @@ onSnapshot(productsRef, async snapshot => {
     renderAdmin();
   }
 
-  if (
-    snapshot.empty &&
-    isAdmin &&
-    !productSeedStarted
-  ) {
+  if (snapshot.empty && isAdmin && !productSeedStarted) {
 
     productSeedStarted = true;
 
@@ -209,13 +264,16 @@ onSnapshot(productsRef, async snapshot => {
 
       for (const p of initialProducts) {
 
-        await setDoc(doc(db, "products", String(p.id)), {
-          id: String(p.id),
-          name: String(p.name),
-          description: String(p.description || ""),
-          price: Number(p.price),
-          symbol: String(p.symbol || "🎁")
-        });
+        await setDoc(
+          doc(db, "products", String(p.id)),
+          {
+            id: String(p.id),
+            name: String(p.name),
+            description: String(p.description || ""),
+            price: Number(p.price),
+            symbol: String(p.symbol || "🎁")
+          }
+        );
 
       }
 
@@ -242,51 +300,57 @@ onSnapshot(productsRef, async snapshot => {
 });
 
 
-// ------------------------------------
-// NAVIGATION
-// ------------------------------------
+/* NAVIGATION */
 
 function show(view) {
 
-  document.querySelectorAll(".view").forEach(x =>
-    x.classList.add("hidden")
-  );
+  document.querySelectorAll(".view").forEach(x => {
+    x.classList.add("hidden");
+  });
 
   $("#" + view + "View").classList.remove("hidden");
 
-  document.querySelectorAll(".nav-btn").forEach(b =>
+  document.querySelectorAll(".nav-btn").forEach(b => {
     b.classList.toggle(
       "active",
       b.dataset.view === view
-    )
-  );
+    );
+  });
 
-  if (view === "cart") renderCart();
+  if (view === "cart") {
+    renderCart();
+  }
 
-  if (view === "admin") renderAdmin();
+  if (view === "admin") {
+    renderAdmin();
+  }
 
 }
 
 
-document.querySelectorAll(".nav-btn").forEach(b =>
-  b.addEventListener("click", () =>
-    show(b.dataset.view)
-  )
-);
+document.querySelectorAll(".nav-btn").forEach(b => {
+
+  b.addEventListener("click", () => {
+    show(b.dataset.view);
+  });
+
+});
 
 
-document.querySelectorAll("[data-go]").forEach(b =>
-  b.addEventListener("click", () =>
+document.querySelectorAll("[data-go]").forEach(b => {
+
+  b.addEventListener("click", () => {
+
     document.getElementById("catalog").scrollIntoView({
       behavior: "smooth"
-    })
-  )
-);
+    });
+
+  });
+
+});
 
 
-// ------------------------------------
-// CART
-// ------------------------------------
+/* CART */
 
 function cartQty() {
   return cart.reduce((a, x) => a + x.qty, 0);
@@ -298,6 +362,8 @@ function updateCount() {
 }
 
 
+/* DISPLAY PRODUCTS */
+
 function renderProducts() {
 
   $("#productGrid").innerHTML = products.map(p => `
@@ -305,7 +371,12 @@ function renderProducts() {
     <article class="product">
 
       <div class="product-art">
-        ${escapeHtml(p.symbol || "🎁")}
+
+        ${p.imageUrl
+          ? `<img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
+          : `<span>${escapeHtml(p.symbol || "🎁")}</span>`
+        }
+
       </div>
 
       <div class="product-info">
@@ -314,7 +385,9 @@ function renderProducts() {
 
         <p>${escapeHtml(p.description || "Handmade creation.")}</p>
 
-        <div class="price">${money(p.price)}</div>
+        <div class="price">
+          ${money(p.price)}
+        </div>
 
         <button data-add="${escapeHtml(p.id)}">
           Add to cart
@@ -338,7 +411,10 @@ function renderProducts() {
       if (item) {
         item.qty++;
       } else {
-        cart.push({ id, qty: 1 });
+        cart.push({
+          id,
+          qty: 1
+        });
       }
 
       save("cwh_cart", cart);
@@ -354,6 +430,8 @@ function renderProducts() {
 }
 
 
+/* DISPLAY CART */
+
 function renderCart() {
 
   const wrap = $("#cartContents");
@@ -362,6 +440,7 @@ function renderCart() {
   if (!cart.length) {
 
     wrap.innerHTML = `
+
       <div class="panel">
 
         <p>Your cart is empty.</p>
@@ -371,6 +450,7 @@ function renderCart() {
         </button>
 
       </div>
+
     `;
 
     checkout.classList.add("hidden");
@@ -378,12 +458,12 @@ function renderCart() {
     $("#backShop").onclick = () => show("shop");
 
     return;
-  }
 
+  }
 
   checkout.classList.remove("hidden");
 
-  let total = 0;
+  let subtotal = 0;
 
   wrap.innerHTML = cart.map(item => {
 
@@ -391,9 +471,9 @@ function renderCart() {
 
     if (!p) return "";
 
-    const line = p.price * item.qty;
+    const line = Number(p.price) * item.qty;
 
-    total += line;
+    subtotal += line;
 
     return `
 
@@ -423,7 +503,10 @@ function renderCart() {
 
         </div>
 
-        <button class="remove" data-remove="${escapeHtml(p.id)}">
+        <button
+          class="remove"
+          data-remove="${escapeHtml(p.id)}"
+        >
           Remove
         </button>
 
@@ -434,29 +517,46 @@ function renderCart() {
   }).join("") + `
 
     <div class="cart-total">
-      Total: ${money(total)}
+
+      Product subtotal: ${money(subtotal)}<br>
+
+      Delivery charge: ${money(DELIVERY_CHARGE)}<br>
+
+      <strong>
+        Final total: ${money(getFinalTotal(subtotal))}
+      </strong>
+
     </div>
 
   `;
 
 
-  document.querySelectorAll("[data-inc]").forEach(b =>
-    b.onclick = () => changeQty(b.dataset.inc, 1)
-  );
+  updateCheckoutPrices();
 
 
-  document.querySelectorAll("[data-dec]").forEach(b =>
-    b.onclick = () => changeQty(b.dataset.dec, -1)
-  );
+  document.querySelectorAll("[data-inc]").forEach(b => {
+
+    b.onclick = () => {
+      changeQty(b.dataset.inc, 1);
+    };
+
+  });
+
+
+  document.querySelectorAll("[data-dec]").forEach(b => {
+
+    b.onclick = () => {
+      changeQty(b.dataset.dec, -1);
+    };
+
+  });
 
 
   document.querySelectorAll("[data-remove]").forEach(b => {
 
     b.onclick = () => {
 
-      cart = cart.filter(x =>
-        x.id !== b.dataset.remove
-      );
+      cart = cart.filter(x => x.id !== b.dataset.remove);
 
       save("cwh_cart", cart);
 
@@ -475,7 +575,9 @@ function changeQty(id, delta) {
 
   const x = cart.find(x => x.id === id);
 
-  if (x) x.qty += delta;
+  if (x) {
+    x.qty += delta;
+  }
 
   cart = cart.filter(x => x.qty > 0);
 
@@ -488,14 +590,16 @@ function changeQty(id, delta) {
 }
 
 
-// ------------------------------------
-// CUSTOMIZATION FEATURE
-// ------------------------------------
+/* CUSTOMIZATION FEATURE */
 
 const customizeToggle = $("#customizeToggle");
+
 const customizationPanel = $("#customizationPanel");
+
 const customizationText = $("#customizationText");
+
 const saveCustomization = $("#saveCustomization");
+
 const customizationSavedBox = $("#customizationSaved");
 
 
@@ -567,9 +671,7 @@ saveCustomization.addEventListener("click", () => {
 updateCustomizationDisplay();
 
 
-// ------------------------------------
-// CHECKOUT AND SHARED ORDERS
-// ------------------------------------
+/* CHECKOUT AND SAVE ORDER */
 
 $("#checkoutForm").addEventListener("submit", async e => {
 
@@ -578,21 +680,38 @@ $("#checkoutForm").addEventListener("submit", async e => {
   if (!cart.length) return;
 
   if (!shopSettingsLoaded) {
+
     toast("Please wait while shop details load.");
+
     return;
+
   }
 
   if (!settings.whatsapp) {
+
     toast("Shop WhatsApp number is not configured.");
+
     return;
+
   }
 
   const f = new FormData(e.currentTarget);
 
-  const name = String(f.get("customerName") || "").trim();
-  const phone = String(f.get("phone") || "").trim();
-  const address = String(f.get("address") || "").trim();
-  const notes = String(f.get("notes") || "").trim();
+  const name = String(
+    f.get("customerName") || ""
+  ).trim();
+
+  const phone = String(
+    f.get("phone") || ""
+  ).trim();
+
+  const address = String(
+    f.get("address") || ""
+  ).trim();
+
+  const notes = String(
+    f.get("notes") || ""
+  ).trim();
 
 
   const items = cart.map(x => {
@@ -600,23 +719,39 @@ $("#checkoutForm").addEventListener("submit", async e => {
     const p = products.find(p => p.id === x.id);
 
     return p ? {
+
       name: p.name,
+
       price: Number(p.price),
+
       qty: x.qty
+
     } : null;
 
   }).filter(Boolean);
 
 
   if (!items.length) {
+
     toast("Your cart products are no longer available.");
+
     return;
+
   }
 
 
-  const total = items.reduce(
+  const subtotal = items.reduce(
     (s, x) => s + x.price * x.qty,
     0
+  );
+
+  const extraCharges = 0;
+
+  const extraChargeReason = "";
+
+  const total = getFinalTotal(
+    subtotal,
+    extraCharges
   );
 
 
@@ -627,14 +762,25 @@ $("#checkoutForm").addEventListener("submit", async e => {
     date: new Date().toLocaleString(),
 
     name,
+
     phone,
+
     address,
+
     notes,
 
     items,
+
+    subtotal,
+
+    deliveryCharge: DELIVERY_CHARGE,
+
+    extraCharges,
+
+    extraChargeReason,
+
     total,
 
-    // NEW CUSTOMIZATION FIELD
     customization: customizationSaved ? customization : "",
 
     payment: "Cash on Delivery",
@@ -645,34 +791,43 @@ $("#checkoutForm").addEventListener("submit", async e => {
 
 
   const lines = items.map(x =>
+
     `• ${x.name} × ${x.qty} — ${money(x.price * x.qty)}`
+
   ).join("\n");
 
 
   const customizationMessage = order.customization
-    ? `
-✨ CUSTOMIZATION REQUIREMENTS:
 
-${order.customization}
-`
-    : `
-✨ CUSTOMIZATION: None requested.
-`;
+    ? `\n✨ CUSTOMIZATION REQUIREMENTS:\n\n${order.customization}\n`
+
+    : `\n✨ CUSTOMIZATION: None requested.\n`;
 
 
   const msg = `
+
 NEW COD ORDER — The Creative World of Harshiv
 
 Order: ${order.id}
 
 Customer: ${name}
+
 Phone: ${phone}
+
 Address: ${address}
 
+
 Items:
+
 ${lines}
 
-Total: ${money(total)}
+
+Product subtotal: ${money(subtotal)}
+
+Delivery charge: ${money(DELIVERY_CHARGE)}
+
+Final total: ${money(total)}
+
 
 Payment: CASH ON DELIVERY
 
@@ -681,16 +836,19 @@ ${customizationMessage}
 ${notes ? "Extra Instructions: " + notes : ""}
 
 Please confirm this order.
+
 `;
 
 
-  const url =
-    `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(msg)}`;
+  const url = `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(msg)}`;
 
 
   try {
 
-    await setDoc(doc(db, "orders", order.id), order);
+    await setDoc(
+      doc(db, "orders", order.id),
+      order
+    );
 
     const whatsappWindow = window.open(
       url,
@@ -698,22 +856,24 @@ Please confirm this order.
       "noopener"
     );
 
-    if (!whatsappWindow) {
-      toast("Order saved! Please open WhatsApp to send it.");
-    } else {
-      toast("Order saved! Press Send in WhatsApp.");
-    }
+    toast(
+      whatsappWindow
+        ? "Order saved! Press Send in WhatsApp."
+        : "Order saved! Please open WhatsApp to send it."
+    );
+
 
     cart = [];
 
     save("cwh_cart", cart);
 
-    // Clear customization after successful order.
+
     customization = "";
 
     customizationSaved = false;
 
     save("cwh_customization", "");
+
 
     customizationText.value = "";
 
@@ -727,6 +887,7 @@ Please confirm this order.
 
     e.currentTarget.reset();
 
+
   } catch (error) {
 
     console.error("Order saving error:", error);
@@ -738,9 +899,7 @@ Please confirm this order.
 });
 
 
-// ------------------------------------
-// ADMIN LOGIN
-// ------------------------------------
+/* ADMIN LOGIN */
 
 $("#loginForm").addEventListener("submit", async e => {
 
@@ -748,14 +907,22 @@ $("#loginForm").addEventListener("submit", async e => {
 
   const form = new FormData(e.currentTarget);
 
-  const email = String(form.get("email") || "").trim();
+  const email = String(
+    form.get("email") || ""
+  ).trim();
 
-  const password = String(form.get("password") || "");
+  const password = String(
+    form.get("password") || ""
+  );
+
 
   try {
 
-    const credential =
-      await signInWithEmailAndPassword(auth, email, password);
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
 
     if (credential.user.uid !== ADMIN_UID) {
 
@@ -787,50 +954,57 @@ $("#logoutBtn").onclick = async () => {
 };
 
 
-// ------------------------------------
-// SHARED ADMIN ORDERS
-// ------------------------------------
+/* SHARED ADMIN ORDERS */
 
 function listenToOrders() {
 
   if (ordersUnsubscribe) {
+
     ordersUnsubscribe();
+
     ordersUnsubscribe = null;
+
   }
 
-  ordersUnsubscribe = onSnapshot(ordersRef, snapshot => {
 
-    orders = snapshot.docs.map(d => d.data());
+  ordersUnsubscribe = onSnapshot(
+    ordersRef,
 
-    orders.sort((a, b) =>
-      b.id.localeCompare(a.id)
-    );
+    snapshot => {
 
-    if (isAdmin) {
-      renderAdmin();
+      orders = snapshot.docs.map(d => d.data());
+
+      orders.sort((a, b) =>
+        b.id.localeCompare(a.id)
+      );
+
+      if (isAdmin) {
+        renderAdmin();
+      }
+
+    },
+
+    error => {
+
+      console.error("Orders loading error:", error);
+
+      toast("Could not load orders. Check Firebase rules.");
+
     }
 
-  }, error => {
-
-    console.error("Orders loading error:", error);
-
-    toast("Could not load orders. Check Firebase rules.");
-
-  });
+  );
 
 }
 
 
-// ------------------------------------
-// AUTHENTICATION STATE
-// ------------------------------------
+/* AUTHENTICATION STATE */
 
 onAuthStateChanged(auth, user => {
 
-  const allowed =
-    !!user && user.uid === ADMIN_UID;
+  const allowed = !!user && user.uid === ADMIN_UID;
 
   isAdmin = allowed;
+
 
   if (allowed) {
 
@@ -839,28 +1013,36 @@ onAuthStateChanged(auth, user => {
   } else {
 
     if (ordersUnsubscribe) {
+
       ordersUnsubscribe();
+
       ordersUnsubscribe = null;
+
     }
 
     orders = [];
 
   }
 
+
   renderAdmin(allowed);
 
 });
 
 
-// ------------------------------------
-// ADMIN DASHBOARD
-// ------------------------------------
+/* ADMIN DASHBOARD */
 
 function renderAdmin(logged = isAdmin) {
 
-  $("#adminLogin").classList.toggle("hidden", logged);
+  $("#adminLogin").classList.toggle(
+    "hidden",
+    logged
+  );
 
-  $("#adminPanel").classList.toggle("hidden", !logged);
+  $("#adminPanel").classList.toggle(
+    "hidden",
+    !logged
+  );
 
   if (!logged) return;
 
@@ -870,77 +1052,201 @@ function renderAdmin(logged = isAdmin) {
   $("#productTotal").textContent = products.length;
 
 
-  // ORDERS
+  /* DISPLAY ORDERS */
 
   $("#ordersList").innerHTML = orders.length
 
-    ? orders.map(o => `
+    ? orders.map(o => {
 
-        <div class="order-card">
+        const subtotal = Number(
+          o.subtotal ??
+          (o.total || 0) - DELIVERY_CHARGE
+        );
 
-          <b>${escapeHtml(o.id)} — ${escapeHtml(o.name)}</b>
+        const delivery = Number(
+          o.deliveryCharge ?? DELIVERY_CHARGE
+        );
 
-          <br>
+        const extra = Number(
+          o.extraCharges || 0
+        );
 
-          <span class="tiny muted">
-            ${escapeHtml(o.date)} · ${escapeHtml(o.status)}
-          </span>
+        const total = Number(
+          o.total ??
+          getFinalTotal(subtotal, extra)
+        );
 
-          <br>
 
-          ${o.items.map(i =>
-            `${escapeHtml(i.name)} × ${i.qty}`
-          ).join("<br>")}
+        return `
 
-          <br>
+          <div class="order-card">
 
-          <b>${money(o.total)} · COD</b>
+            <b>
+              ${escapeHtml(o.id)} —
+              ${escapeHtml(o.name)}
+            </b>
 
-          <br>
+            <br>
 
-          <span class="tiny">
-            ${escapeHtml(o.phone)} · ${escapeHtml(o.address)}
-          </span>
+            <span class="tiny muted">
+              ${escapeHtml(o.date)} ·
+              ${escapeHtml(o.status)}
+            </span>
 
-          ${
-            o.customization
-              ? `
-                <div class="order-customization">
-                  <b>✨ Customer Customization:</b>
-                  <br>
-                  ${escapeHtml(o.customization)}
-                </div>
-              `
-              : ""
-          }
+            <br><br>
 
-          ${
-            o.notes
-              ? `
-                <div class="tiny">
-                  <b>Extra instructions:</b>
-                  ${escapeHtml(o.notes)}
-                </div>
-              `
-              : ""
-          }
+            ${o.items.map(i =>
 
-          <br>
+              `${escapeHtml(i.name)} × ${i.qty}`
 
-          <button class="secondary-btn" data-status="${escapeHtml(o.id)}">
-            Mark confirmed
-          </button>
+            ).join("<br>")}
 
-          <button class="secondary-btn" data-delete-order="${escapeHtml(o.id)}">
-            Delete
-          </button>
+            <br><br>
 
-        </div>
+            <div class="price-summary">
 
-      `).join("")
+              <div class="price-summary-row">
+                <span>Product subtotal</span>
+                <b>${money(subtotal)}</b>
+              </div>
+
+              <div class="price-summary-row">
+                <span>Delivery charge</span>
+                <b>${money(delivery)}</b>
+              </div>
+
+              <div class="price-summary-row">
+                <span>Extra admin charges</span>
+                <b>${money(extra)}</b>
+              </div>
+
+              <div class="price-summary-row final-price">
+                <span>Final total</span>
+                <b>${money(total)}</b>
+              </div>
+
+            </div>
+
+
+            ${
+              o.extraChargeReason
+                ? `
+                  <div class="order-customization">
+                    <b>Admin charge reason:</b><br>
+                    ${escapeHtml(o.extraChargeReason)}
+                  </div>
+                `
+                : ""
+            }
+
+
+            <br>
+
+            <span class="tiny">
+              Phone: ${escapeHtml(o.phone)}
+              <br>
+              Address: ${escapeHtml(o.address)}
+            </span>
+
+
+            ${
+              o.customization
+                ? `
+                  <div class="order-customization">
+                    <b>✨ Customer Customization:</b>
+                    <br>
+                    ${escapeHtml(o.customization)}
+                  </div>
+                `
+                : ""
+            }
+
+
+            ${
+              o.notes
+                ? `
+                  <div class="tiny">
+                    <b>Extra instructions:</b>
+                    ${escapeHtml(o.notes)}
+                  </div>
+                `
+                : ""
+            }
+
+
+            <br>
+
+            <button
+              class="secondary-btn"
+              data-status="${escapeHtml(o.id)}"
+            >
+              Mark confirmed
+            </button>
+
+
+            <button
+              class="secondary-btn"
+              data-delete-order="${escapeHtml(o.id)}"
+            >
+              Delete
+            </button>
+
+
+            <div class="admin-extra-charge">
+
+              <h3>Admin extra charge</h3>
+
+              <p class="tiny muted">
+                Only the admin can change this charge.
+              </p>
+
+              <label>
+                Extra charge amount (₹)
+
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="${extra}"
+                  data-extra-amount="${escapeHtml(o.id)}"
+                >
+
+              </label>
+
+
+              <label>
+                Reason for extra charge
+
+                <input
+                  type="text"
+                  maxlength="200"
+                  value="${escapeHtml(o.extraChargeReason || "")}"
+                  placeholder="Enter the reason"
+                  data-extra-reason="${escapeHtml(o.id)}"
+                >
+
+              </label>
+
+
+              <button
+                class="primary-btn"
+                data-save-extra="${escapeHtml(o.id)}"
+              >
+                Save extra charge
+              </button>
+
+            </div>
+
+          </div>
+
+        `;
+
+      }).join("")
 
     : '<p class="muted">No new orders yet.</p>';
 
+
+  /* MARK ORDER CONFIRMED */
 
   document.querySelectorAll("[data-status]").forEach(b => {
 
@@ -950,7 +1256,9 @@ function renderAdmin(logged = isAdmin) {
 
         await updateDoc(
           doc(db, "orders", b.dataset.status),
-          { status: "Confirmed" }
+          {
+            status: "Confirmed"
+          }
         );
 
         toast("Order confirmed.");
@@ -967,6 +1275,8 @@ function renderAdmin(logged = isAdmin) {
 
   });
 
+
+  /* DELETE ORDER */
 
   document.querySelectorAll("[data-delete-order]").forEach(b => {
 
@@ -993,34 +1303,347 @@ function renderAdmin(logged = isAdmin) {
   });
 
 
-  // PRODUCTS
+  /* SAVE ADMIN EXTRA CHARGE */
+
+  document.querySelectorAll("[data-save-extra]").forEach(b => {
+
+    b.onclick = async () => {
+
+      if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
+
+        toast("Admin access required.");
+
+        return;
+
+      }
+
+
+      const orderId = b.dataset.saveExtra;
+
+      const amountInput = document.querySelector(
+        `[data-extra-amount="${orderId}"]`
+      );
+
+      const reasonInput = document.querySelector(
+        `[data-extra-reason="${orderId}"]`
+      );
+
+
+      const amount = Number(amountInput.value);
+
+      const reason = reasonInput.value.trim();
+
+
+      if (!Number.isFinite(amount) || amount < 0) {
+
+        toast("Enter a valid extra charge amount.");
+
+        return;
+
+      }
+
+
+      if (amount > 0 && !reason) {
+
+        toast("Please enter the reason for the extra charge.");
+
+        return;
+
+      }
+
+
+      const order = orders.find(o => o.id === orderId);
+
+      if (!order) {
+
+        toast("Order not found.");
+
+        return;
+
+      }
+
+
+      const subtotal = Number(
+        order.subtotal ??
+        (order.total || 0) - DELIVERY_CHARGE
+      );
+
+      const newTotal = getFinalTotal(
+        subtotal,
+        amount
+      );
+
+
+      b.disabled = true;
+
+      b.textContent = "Saving...";
+
+
+      try {
+
+        await updateDoc(
+          doc(db, "orders", orderId),
+
+          {
+            extraCharges: amount,
+
+            extraChargeReason: reason,
+
+            total: newTotal
+          }
+
+        );
+
+        toast("Extra charge and final total saved!");
+
+      } catch (error) {
+
+        console.error("Extra charge update error:", error);
+
+        toast("Could not save extra charge. Check Firestore rules.");
+
+      } finally {
+
+        b.disabled = false;
+
+        b.textContent = "Save extra charge";
+
+      }
+
+    };
+
+  });
+
+
+  /* DISPLAY ADMIN PRODUCTS */
 
   $("#adminProducts").innerHTML = products.map(p => `
 
     <div class="admin-product">
 
-      <span>
-        ${escapeHtml(p.name)} — ${money(p.price)}
-      </span>
+      <div class="admin-product-details">
 
-      <button class="secondary-btn" data-del-product="${escapeHtml(p.id)}">
-        Delete
-      </button>
+        ${
+          p.imageUrl
+            ? `<img class="admin-product-thumb" src="${escapeHtml(p.imageUrl)}" alt="">`
+            : `<span class="admin-product-symbol">${escapeHtml(p.symbol || "🎁")}</span>`
+        }
+
+        <span>
+          ${escapeHtml(p.name)} — ${money(p.price)}
+        </span>
+
+      </div>
+
+
+      <div class="admin-product-controls">
+
+        <label class="change-image-label">
+
+          ${p.imageUrl ? "Change photo" : "Add photo"}
+
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            data-product-image="${escapeHtml(p.id)}"
+          >
+
+        </label>
+
+
+        <button
+          class="secondary-btn"
+          data-del-product="${escapeHtml(p.id)}"
+        >
+          Delete
+        </button>
+
+      </div>
 
     </div>
 
   `).join("");
 
 
+  /* CHANGE PRODUCT IMAGE */
+
+  document.querySelectorAll("[data-product-image]").forEach(input => {
+
+    input.addEventListener("change", async () => {
+
+      if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
+
+        toast("Admin access required.");
+
+        return;
+
+      }
+
+
+      const file = input.files[0];
+
+      if (!file) return;
+
+
+      if (
+        !ALLOWED_IMAGE_TYPES.includes(file.type) ||
+        file.size > MAX_IMAGE_SIZE
+      ) {
+
+        input.value = "";
+
+        toast("Choose a JPG, PNG, WEBP or GIF image up to 5 MB.");
+
+        return;
+
+      }
+
+
+      const product = products.find(
+        p => p.id === input.dataset.productImage
+      );
+
+      if (!product) {
+
+        toast("Product could not be found.");
+
+        return;
+
+      }
+
+
+      input.disabled = true;
+
+
+      try {
+
+        const safeName = file.name.replace(
+          /[^a-zA-Z0-9._-]/g,
+          "_"
+        );
+
+        const imagePath =
+          `products/${product.id}/${Date.now()}-${safeName}`;
+
+        const imageRef = ref(storage, imagePath);
+
+
+        await uploadBytes(
+          imageRef,
+          file,
+          {
+            contentType: file.type
+          }
+        );
+
+
+        const imageUrl = await getDownloadURL(imageRef);
+
+
+        await updateDoc(
+          doc(db, "products", product.id),
+          {
+            imageUrl,
+            imagePath
+          }
+        );
+
+
+        if (product.imagePath) {
+
+          try {
+
+            await deleteObject(
+              ref(storage, product.imagePath)
+            );
+
+          } catch (cleanupError) {
+
+            console.warn(
+              "Old product image cleanup failed:",
+              cleanupError
+            );
+
+          }
+
+        }
+
+
+        toast("Product picture updated for all devices!");
+
+
+      } catch (error) {
+
+        console.error(
+          "Existing product image upload error:",
+          error
+        );
+
+        toast(
+          error.code === "storage/unauthorized"
+            ? "Image upload blocked. Check Firebase Storage rules."
+            : "Could not update product picture."
+        );
+
+      } finally {
+
+        input.disabled = false;
+
+        input.value = "";
+
+      }
+
+    });
+
+  });
+
+
+  /* DELETE PRODUCT */
+
   document.querySelectorAll("[data-del-product]").forEach(b => {
 
     b.onclick = async () => {
+
+      if (!isAdmin) {
+
+        toast("Admin access required.");
+
+        return;
+
+      }
+
+
+      const product = products.find(
+        p => p.id === b.dataset.delProduct
+      );
+
 
       try {
 
         await deleteDoc(
           doc(db, "products", b.dataset.delProduct)
         );
+
+
+        if (product?.imagePath) {
+
+          try {
+
+            await deleteObject(
+              ref(storage, product.imagePath)
+            );
+
+          } catch (imageError) {
+
+            console.warn(
+              "Product image cleanup failed:",
+              imageError
+            );
+
+          }
+
+        }
+
 
         toast("Product deleted.");
 
@@ -1043,73 +1666,283 @@ function renderAdmin(logged = isAdmin) {
 }
 
 
-// ------------------------------------
-// ADD PRODUCT TO FIREBASE
-// ------------------------------------
+/* PRODUCT IMAGE PREVIEW */
+
+const productImageInput = $("#productImage");
+
+const productImagePreview = $("#productImagePreview");
+
+
+productImageInput.addEventListener("change", () => {
+
+  const file = productImageInput.files[0];
+
+
+  if (previewObjectUrl) {
+
+    URL.revokeObjectURL(previewObjectUrl);
+
+  }
+
+
+  previewObjectUrl = null;
+
+  productImagePreview.innerHTML = "";
+
+  productImagePreview.classList.add("hidden");
+
+
+  if (!file) return;
+
+
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+
+    productImageInput.value = "";
+
+    toast("Choose a JPG, PNG, WEBP or GIF image.");
+
+    return;
+
+  }
+
+
+  if (file.size > MAX_IMAGE_SIZE) {
+
+    productImageInput.value = "";
+
+    toast("Image must be 5 MB or smaller.");
+
+    return;
+
+  }
+
+
+  previewObjectUrl = URL.createObjectURL(file);
+
+
+  productImagePreview.innerHTML = `
+
+    <img
+      src="${previewObjectUrl}"
+      alt="Selected product preview"
+    >
+
+  `;
+
+
+  productImagePreview.classList.remove("hidden");
+
+});
+
+
+/* ADD PRODUCT TO FIREBASE */
 
 $("#productForm").addEventListener("submit", async e => {
 
   e.preventDefault();
 
-  if (!isAdmin) {
+
+  if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
+
     toast("Admin access required.");
+
     return;
+
   }
 
-  const f = new FormData(e.currentTarget);
+
+  const form = e.currentTarget;
+
+  const f = new FormData(form);
+
 
   const product = {
 
     id: "p" + Date.now(),
 
-    name: String(f.get("name") || "").trim(),
+    name: String(
+      f.get("name") || ""
+    ).trim(),
 
-    price: Number(f.get("price")),
+    price: Number(
+      f.get("price")
+    ),
 
-    description: String(f.get("description") || "").trim(),
+    description: String(
+      f.get("description") || ""
+    ).trim(),
 
-    symbol: String(f.get("symbol") || "").trim() || "🎁"
+    symbol: String(
+      f.get("symbol") || ""
+    ).trim() || "🎁"
 
   };
 
 
-  if (!product.name || !Number.isFinite(product.price) || product.price < 0) {
+  const imageFile = productImageInput.files[0] || null;
+
+
+  if (
+    !product.name ||
+    !Number.isFinite(product.price) ||
+    product.price < 0
+  ) {
+
     toast("Enter a valid product name and price.");
+
     return;
+
   }
 
 
+  if (
+    imageFile &&
+    (
+      !ALLOWED_IMAGE_TYPES.includes(imageFile.type) ||
+      imageFile.size > MAX_IMAGE_SIZE
+    )
+  ) {
+
+    toast("Choose a JPG, PNG, WEBP or GIF image up to 5 MB.");
+
+    return;
+
+  }
+
+
+  const submitButton = form.querySelector(
+    'button[type="submit"]'
+  );
+
+
+  submitButton.disabled = true;
+
+  submitButton.textContent = imageFile
+    ? "Uploading image..."
+    : "Adding product";
+
+
+  let uploadedImageRef = null;
+
+
   try {
+
+    if (imageFile) {
+
+      const safeName = imageFile.name.replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_"
+      );
+
+      const imagePath =
+        `products/${product.id}/${Date.now()}-${safeName}`;
+
+      uploadedImageRef = ref(storage, imagePath);
+
+
+      await uploadBytes(
+        uploadedImageRef,
+        imageFile,
+        {
+          contentType: imageFile.type
+        }
+      );
+
+
+      product.imageUrl = await getDownloadURL(
+        uploadedImageRef
+      );
+
+      product.imagePath = imagePath;
+
+    }
+
 
     await setDoc(
       doc(db, "products", product.id),
       product
     );
 
-    e.currentTarget.reset();
+
+    form.reset();
+
+    productImagePreview.innerHTML = "";
+
+    productImagePreview.classList.add("hidden");
+
+
+    if (previewObjectUrl) {
+
+      URL.revokeObjectURL(previewObjectUrl);
+
+    }
+
+    previewObjectUrl = null;
+
 
     toast("Product added for all devices!");
 
+
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "Product add/upload error:",
+      error
+    );
 
-    toast("Could not add product. Check Firebase rules.");
+
+    if (uploadedImageRef) {
+
+      try {
+
+        await deleteObject(uploadedImageRef);
+
+      } catch (cleanupError) {
+
+        console.warn(cleanupError);
+
+      }
+
+    }
+
+
+    if (error.code === "storage/unauthorized") {
+
+      toast("Image upload blocked. Check Firebase Storage rules.");
+
+    } else if (
+      error.code === "storage/bucket-not-found" ||
+      error.code === "storage/project-not-found"
+    ) {
+
+      toast("Firebase Storage is not set up yet.");
+
+    } else {
+
+      toast("Could not add product. Check Firebase Storage and Firestore rules.");
+
+    }
+
+  } finally {
+
+    submitButton.disabled = false;
+
+    submitButton.textContent = "Add product";
 
   }
 
 });
 
 
-// ------------------------------------
-// SAVE WHATSAPP NUMBER
-// ------------------------------------
+/* SAVE WHATSAPP NUMBER */
 
 $("#settingsForm").addEventListener("submit", async e => {
 
   e.preventDefault();
 
+
   const user = auth.currentUser;
+
 
   if (!user || user.uid !== ADMIN_UID) {
 
@@ -1136,9 +1969,12 @@ $("#settingsForm").addEventListener("submit", async e => {
 
   try {
 
-    await setDoc(shopSettingsRef, {
-      whatsapp: n
-    });
+    await setDoc(
+      shopSettingsRef,
+      {
+        whatsapp: n
+      }
+    );
 
     toast("WhatsApp number saved for all devices!");
 
@@ -1153,9 +1989,7 @@ $("#settingsForm").addEventListener("submit", async e => {
 });
 
 
-// ------------------------------------
-// EXPORT SHARED ORDERS
-// ------------------------------------
+/* EXPORT SHARED ORDERS */
 
 $("#exportOrders").onclick = () => {
 
@@ -1168,7 +2002,11 @@ $("#exportOrders").onclick = () => {
       "Phone",
       "Address",
       "Items",
-      "Total",
+      "Product Subtotal",
+      "Delivery Charge",
+      "Extra Charges",
+      "Extra Charge Reason",
+      "Final Total",
       "Payment",
       "Customization",
       "Extra Instructions",
@@ -1178,19 +2016,35 @@ $("#exportOrders").onclick = () => {
     ...orders.map(o => [
 
       o.id,
+
       o.date,
+
       o.name,
+
       o.phone,
+
       o.address,
 
       o.items.map(i =>
         `${i.name} x${i.qty}`
       ).join("; "),
 
+      o.subtotal ?? "",
+
+      o.deliveryCharge ?? DELIVERY_CHARGE,
+
+      o.extraCharges ?? 0,
+
+      o.extraChargeReason || "",
+
       o.total,
+
       o.payment,
+
       o.customization || "",
+
       o.notes || "",
+
       o.status
 
     ])
@@ -1210,7 +2064,12 @@ $("#exportOrders").onclick = () => {
   const a = document.createElement("a");
 
   a.href = URL.createObjectURL(
-    new Blob([csv], { type: "text/csv;charset=utf-8" })
+    new Blob(
+      [csv],
+      {
+        type: "text/csv;charset=utf-8"
+      }
+    )
   );
 
   a.download = "creative-world-orders.csv";
@@ -1222,13 +2081,13 @@ $("#exportOrders").onclick = () => {
 };
 
 
-// ------------------------------------
-// INITIALIZE WEBSITE
-// ------------------------------------
+/* INITIALIZE WEBSITE */
 
 renderProducts();
 
 updateCount();
+
+renderCart();
 
 
 if (
@@ -1238,9 +2097,9 @@ if (
 
   addEventListener("load", () => {
 
-    navigator.serviceWorker
-      .register("./service-worker.js")
-      .catch(console.error);
+    navigator.serviceWorker.register(
+      "./service-worker.js"
+    ).catch(console.error);
 
   });
 
