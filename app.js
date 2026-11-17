@@ -756,10 +756,13 @@ $("#checkoutForm").addEventListener("submit", async e => {
   }
 
 
+  // CORRECTED SUBTOTAL CALCULATION
+
   const subtotal = items.reduce(
-    (s, x) => s + x.price * x.qty,    (s, x) => s + x.price * x.qty,
+    (s, x) => s + Number(x.price) * Number(x.qty),
     0
   );
+
 
   const extraCharges = 0;
 
@@ -912,7 +915,10 @@ Please confirm this order.
 
     console.error("Order saving error:", error);
 
-    toast("Order could not be saved. Please try again.");
+    toast(
+      "Order error: " +
+      (error.code || error.message || "Unknown error")
+    );
 
   }
 
@@ -1409,6 +1415,7 @@ function renderAdmin(logged = isAdmin) {
 
 
   /* APPROVE OR REJECT CUSTOMER RETURN / REPLACEMENT REQUESTS */
+
   document.querySelectorAll("[data-return-decision]").forEach(b => {
     b.onclick = async () => {
       if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) return toast("Admin access required.");
@@ -1519,7 +1526,9 @@ function renderAdmin(logged = isAdmin) {
 
         return;
 
-      }      if (amount > 0 && !reason) {
+      }
+
+      if (amount > 0 && !reason) {
 
         toast("Please enter the reason for the extra charge.");
 
