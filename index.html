@@ -24,6 +24,7 @@
   <nav>
     <button class="nav-btn active" data-view="shop">Shop</button>
     <button class="nav-btn" data-view="cart">Cart <span id="cartCount">0</span></button>
+    <button class="nav-btn" data-view="account">My Account</button>
     <button class="nav-btn" data-view="admin">Admin</button>
   </nav>
 </header>
@@ -138,7 +139,6 @@
         ></textarea>
       </label>
 
-
       <!-- PRICE BREAKDOWN -->
 
       <div class="price-summary" id="checkoutPriceSummary">
@@ -161,7 +161,6 @@
         </div>
 
       </div>
-
 
       <!-- CUSTOMIZATION FEATURE -->
 
@@ -223,7 +222,6 @@
 
       </div>
 
-
       <!-- PAYMENT METHOD -->
 
       <div class="payment-choice">
@@ -237,7 +235,6 @@
         </small>
 
       </div>
-
 
       <button class="primary-btn wide" type="submit">
         Place COD order via WhatsApp
@@ -256,6 +253,101 @@
 </section>
 
 
+<!-- CUSTOMER ACCOUNT AND ORDER HISTORY -->
+
+<section id="accountView" class="view hidden section">
+
+  <p class="eyebrow">CUSTOMER ACCOUNT</p>
+
+  <h1 class="page-title">My Account & Orders</h1>
+
+  <div id="customerSignedOut">
+
+    <p class="muted">
+      Create an account or sign in to place orders and view your order history.
+    </p>
+
+    <div class="customer-auth-grid">
+
+      <div class="panel">
+
+        <h2>Customer sign in</h2>
+
+        <form id="customerLoginForm">
+
+          <label>
+            Email address
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+
+          <label>
+            Password
+            <input name="password" type="password" autocomplete="current-password" required>
+          </label>
+
+          <button class="primary-btn wide" type="submit">
+            Sign in
+          </button>
+
+        </form>
+
+      </div>
+
+      <div class="panel">
+
+        <h2>Create an account</h2>
+
+        <form id="customerRegisterForm">
+
+          <label>
+            Email address
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+
+          <label>
+            Create password
+            <input name="password" type="password" minlength="6" autocomplete="new-password" required>
+          </label>
+
+          <small class="tiny muted">
+            Password must contain at least 6 characters.
+          </small>
+
+          <button class="primary-btn wide" type="submit">
+            Create account
+          </button>
+
+        </form>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="customerSignedIn" class="hidden">
+
+    <div class="panel">
+
+      <p>Signed in as <b id="customerEmail"></b></p>
+
+      <button class="secondary-btn" id="customerLogoutBtn" type="button">
+        Sign out
+      </button>
+
+    </div>
+
+    <h2>Your orders</h2>
+
+    <div id="customerOrdersList">
+      <p class="muted">Loading your orders...</p>
+    </div>
+
+  </div>
+
+</section>
+
+
 <!-- ADMIN PAGE -->
 
 <section id="adminView" class="view hidden section">
@@ -263,7 +355,6 @@
   <p class="eyebrow">STORE MANAGEMENT</p>
 
   <h1 class="page-title">Admin dashboard</h1>
-
 
   <!-- ADMIN LOGIN -->
 
@@ -326,7 +417,6 @@
 
     </div>
 
-
     <!-- STATISTICS -->
 
     <div class="stats">
@@ -343,7 +433,6 @@
 
     </div>
 
-
     <!-- ORDERS -->
 
     <div class="panel">
@@ -357,7 +446,6 @@
       <div id="ordersList"></div>
 
     </div>
-
 
     <!-- MANAGE PRODUCTS -->
 
@@ -427,7 +515,6 @@
       <div id="adminProducts"></div>
 
     </div>
-
 
     <!-- WHATSAPP SETTINGS -->
 
