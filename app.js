@@ -756,13 +756,10 @@ $("#checkoutForm").addEventListener("submit", async e => {
   }
 
 
-  // CORRECTED SUBTOTAL CALCULATION
-
   const subtotal = items.reduce(
-    (s, x) => s + Number(x.price) * Number(x.qty),
+    (s, x) => s + x.price * x.qty,
     0
   );
-
 
   const extraCharges = 0;
 
@@ -800,9 +797,7 @@ $("#checkoutForm").addEventListener("submit", async e => {
 
     extraCharges,
 
-    extraChargeReason,
-
-    total,
+    extraChargeReason,    total,
 
     customization: customizationSaved ? customization : "",
 
@@ -915,10 +910,7 @@ Please confirm this order.
 
     console.error("Order saving error:", error);
 
-    toast(
-      "Order error: " +
-      (error.code || error.message || "Unknown error")
-    );
+    toast("Order could not be saved. Please try again.");
 
   }
 
@@ -1415,7 +1407,6 @@ function renderAdmin(logged = isAdmin) {
 
 
   /* APPROVE OR REJECT CUSTOMER RETURN / REPLACEMENT REQUESTS */
-
   document.querySelectorAll("[data-return-decision]").forEach(b => {
     b.onclick = async () => {
       if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) return toast("Admin access required.");
@@ -1528,6 +1519,7 @@ function renderAdmin(logged = isAdmin) {
 
       }
 
+
       if (amount > 0 && !reason) {
 
         toast("Please enter the reason for the extra charge.");
@@ -1602,9 +1594,7 @@ function renderAdmin(logged = isAdmin) {
 
   /* DISPLAY ADMIN PRODUCTS */
 
-  $("#adminProducts").innerHTML = products.map(p => `
-
-    <div class="admin-product">
+  $("#adminProducts").innerHTML = products.map(p => `    <div class="admin-product">
 
       <div class="admin-product-details">
 
@@ -1635,6 +1625,23 @@ function renderAdmin(logged = isAdmin) {
 
         </label>
 
+        <label class="image-url-label">
+          ImageKit image URL
+          <input
+            type="url"
+            placeholder="Paste ImageKit URL here"
+            value="${escapeHtml(p.imageUrl || "")}"
+            data-product-image-url="${escapeHtml(p.id)}"
+          >
+        </label>
+
+        <button
+          type="button"
+          class="secondary-btn"
+          data-save-product-image-url="${escapeHtml(p.id)}"
+        >
+          Save image URL
+        </button>
 
         <button
           class="secondary-btn"
@@ -1648,6 +1655,57 @@ function renderAdmin(logged = isAdmin) {
     </div>
 
   `).join("");
+
+
+  /* SAVE IMAGEKIT URL FOR AN EXISTING PRODUCT */
+
+  document.querySelectorAll("[data-save-product-image-url]").forEach(button => {
+
+    button.addEventListener("click", async () => {
+
+      if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
+        toast("Admin access required.");
+        return;
+      }
+
+      const productId = button.dataset.saveProductImageUrl;
+      const input = document.querySelector(`[data-product-image-url="${CSS.escape(productId)}"]`);
+      const imageUrl = String(input?.value || "").trim();
+
+      if (!imageUrl) {
+        toast("Please paste an ImageKit image URL.");
+        return;
+      }
+
+      try {
+        const parsedUrl = new URL(imageUrl);
+        if (parsedUrl.protocol !== "https:") throw new Error("HTTPS required");
+      } catch {
+        toast("Please enter a valid image URL beginning with https://");
+        return;
+      }
+
+      button.disabled = true;
+      const oldText = button.textContent;
+      button.textContent = "Saving...";
+
+      try {
+        await updateDoc(doc(db, "products", productId), {
+          imageUrl,
+          imagePath: ""
+        });
+        toast("Image URL saved! Customers will see this picture.");
+      } catch (error) {
+        console.error("Image URL save error:", error);
+        toast("Could not save image URL. Check Firestore rules.");
+      } finally {
+        button.disabled = false;
+        button.textContent = oldText;
+      }
+
+    });
+
+  });
 
 
   /* CHANGE PRODUCT IMAGE */
@@ -1858,6 +1916,33 @@ const productImageInput = $("#productImage");
 const productImagePreview = $("#productImagePreview");
 
 
+/* IMAGEKIT URL FIELD FOR NEW PRODUCTS */
+
+const productImageUrlLabel = document.createElement("label");
+productImageUrlLabel.className = "image-url-label";
+productImageUrlLabel.innerHTML = `
+  ImageKit image URL (optional)
+  <input
+    type="url"
+    id="productImageUrl"
+    placeholder="Paste your ImageKit image URL here"
+  >
+  <small>Upload the picture to ImageKit first, then paste its URL here.</small>
+`;
+
+if (productImageInput?.parentElement?.parentElement) {
+  productImageInput.parentElement.parentElement.insertBefore(
+    productImageUrlLabel,
+    productImageInput.parentElement
+  );
+} else if (productImageInput?.parentElement) {
+  productImageInput.parentElement.insertAdjacentElement(
+    "beforebegin",
+    productImageUrlLabel
+  );
+}
+
+
 productImageInput.addEventListener("change", () => {
 
   const file = productImageInput.files[0];
@@ -1965,6 +2050,19 @@ $("#productForm").addEventListener("submit", async e => {
 
 
   const imageFile = productImageInput.files[0] || null;
+  const imageUrlInput = $("#productImageUrl");
+  const enteredImageUrl = String(imageUrlInput?.value || "").trim();
+
+  if (enteredImageUrl) {
+    try {
+      const parsedUrl = new URL(enteredImageUrl);
+      if (parsedUrl.protocol !== "https:") throw new Error("HTTPS required");
+    } catch {
+      toast("Please enter a valid image URL beginning with https://");
+      return;
+    }
+    product.imageUrl = enteredImageUrl;
+  }
 
 
   if (
@@ -2050,6 +2148,7 @@ $("#productForm").addEventListener("submit", async e => {
 
 
     form.reset();
+    if (imageUrlInput) imageUrlInput.value = "";
 
     productImagePreview.innerHTML = "";
 
@@ -2104,7 +2203,7 @@ $("#productForm").addEventListener("submit", async e => {
 
     } else {
 
-      toast("Could not add product. Check Firebase Storage and Firestore rules.");
+      toast("Could not add product. Check Firestore rules and try again.");
 
     }
 
