@@ -1,16 +1,40 @@
 const crypto = require("node:crypto");
+const admin = require("firebase-admin");
+
+const ADMIN_UID = "7SgbiCsfqFS2WsxFV2sNXdBtCsR2";
+
+const allowedOrigin = "https://harshiv-rgb.github.io";
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(
+        /\\n/g,
+        "\n"
+      )
+    })
+  });
+}
 
 exports.handler = async (event) => {
-  const allowedOrigin = "https://harshiv-rgb.github.io";
+
   const origin = event.headers.origin || "";
 
   const headers = {
     "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Vary": "Origin",
     "Content-Type": "application/json"
   };
+
+  const response = (statusCode, data) => ({
+    statusCode,
+    headers,
+    body: JSON.stringify(data)
+  });
 
   if (event.httpMethod === "OPTIONS") {
     return {
@@ -20,46 +44,75 @@ exports.handler = async (event) => {
   }
 
   if (origin !== allowedOrigin) {
-    return {
-      statusCode: 403,
-      headers,
-      body: JSON.stringify({ error: "Origin not allowed" })
-    };
+    return response(403, {
+      error: "Origin not allowed"
+    });
   }
 
   if (event.httpMethod !== "GET") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method not allowed" })
-    };
+    return response(405, {
+      error: "Method not allowed"
+    });
   }
 
-  const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+  try {
 
-  if (!privateKey) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: "ImageKit key is not configured" })
-    };
-  }
+    // Check Firebase login token
+    const authorization =
+      event.headers.authorization || "";
 
-  const token = crypto.randomBytes(16).toString("hex");
-  const expire = Math.floor(Date.now() / 1000) + 10 * 60;
+    if (!authorization.startsWith("Bearer ")) {
+      return response(401, {
+        error: "Authentication required"
+      });
+    }
 
-  const signature = crypto
-    .createHmac("sha1", privateKey)
-    .update(token + expire)
-    .digest("hex");
+    const idToken = authorization.substring(7);
 
-  return {
-    statusCode: 200,
-    headers,
-    body: JSON.stringify({
+    const decodedToken =
+      await admin.auth().verifyIdToken(idToken);
+
+    // Check whether the user is your admin
+    if (decodedToken.uid !== ADMIN_UID) {
+      return response(403, {
+        error: "Admin access required"
+      });
+    }
+
+    // Read ImageKit private key securely
+    const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+
+    if (!privateKey) {
+      return response(500, {
+        error: "ImageKit key is not configured"
+      });
+    }
+
+    // Generate ImageKit authentication
+    const token = crypto.randomBytes(16).toString("hex");
+
+    const expire =
+      Math.floor(Date.now() / 1000) + 10 * 60;
+
+    const signature = crypto
+      .createHmac("sha1", privateKey)
+      .update(token + expire)
+      .digest("hex");
+
+    return response(200, {
       token,
       expire,
       signature
-    })
-  };
+    });
+
+  } catch (error) {
+
+    console.error("ImageKit authentication error:", error);
+
+    return response(401, {
+      error: "Authentication failed"
+    });
+
+  }
+
 };
