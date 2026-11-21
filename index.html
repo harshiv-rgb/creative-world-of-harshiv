@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#a6262d">
+<meta name="theme-color" content="#080b18">
 <meta name="description" content="Shop handmade creations from The Creative World of Harshiv.">
 <title>The Creative World of Harshiv</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -70,7 +70,7 @@
       </div>
 
       <p class="muted">
-        Choose an item to add it to your cart.
+        Choose an item to view its details and add it to your cart.
       </p>
     </div>
 
@@ -472,7 +472,18 @@
         </label>
 
         <label>
-          Price (₹)
+          Original / cut price (₹)
+          <input
+            name="originalPrice"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Optional"
+          >
+        </label>
+
+        <label>
+          Discounted selling price (₹)
           <input
             name="price"
             type="number"
@@ -481,6 +492,11 @@
             required
           >
         </label>
+
+        <div class="discount-preview-box">
+          <span>Discount preview</span>
+          <strong id="discountPreview">No discount</strong>
+        </div>
 
         <label>
           Short description
@@ -573,6 +589,13 @@
   </p>
 
   <small>Independent shop demo • COD only</small>
+
+  <div class="footer-support">
+    <span>Need help? Contact us:</span>
+    <a href="mailto:harshivnadya@gmail.com">
+      harshivnadya@gmail.com
+    </a>
+  </div>
 
 </footer>
 
