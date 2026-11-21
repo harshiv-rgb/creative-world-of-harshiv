@@ -19,7 +19,8 @@ import {
   query,
   where,
   deleteDoc,
-  updateDoc
+  updateDoc,
+  deleteField
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 import {
@@ -143,6 +144,8 @@ let previewObjectUrl = null;
 function toast(msg) {
   const t = $("#toast");
 
+  if (!t) return;
+
   t.textContent = msg;
   t.style.display = "block";
 
@@ -199,22 +202,24 @@ function getProductPriceHTML(product) {
 
   if (!original) {
     return `
-      <div class="price">
-        ${money(selling)}
+      <div class="price-block product-pricing">
+        <span class="price">
+          ${money(selling)}
+        </span>
       </div>
     `;
   }
 
   return `
-    <div class="product-pricing">
+    <div class="price-block product-pricing">
 
-      <span class="original-price">
+      <del class="original-price">
         ${money(original)}
-      </span>
+      </del>
 
-      <span class="price">
+      <strong class="price">
         ${money(selling)}
-      </span>
+      </strong>
 
       <span class="discount-badge">
         ${discount}% OFF
@@ -273,13 +278,17 @@ function updateCheckoutPrices() {
 const productModal = document.createElement("div");
 
 productModal.id = "productDetailsModal";
-productModal.className = "product-modal hidden";
+productModal.className =
+  "product-details-modal product-modal hidden";
 
 productModal.innerHTML = `
-  <div class="product-modal-backdrop" data-close-product></div>
+  <div
+    class="product-modal-backdrop"
+    data-close-product
+  ></div>
 
   <div
-    class="product-modal-content"
+    class="product-details-card product-modal-content"
     role="dialog"
     aria-modal="true"
     aria-labelledby="productModalName"
@@ -287,14 +296,17 @@ productModal.innerHTML = `
 
     <button
       type="button"
-      class="product-modal-close"
+      class="details-close product-modal-close"
       aria-label="Close product details"
       data-close-product
     >
       ×
     </button>
 
-    <div id="productModalContent"></div>
+    <div
+      class="product-details-content"
+      id="productModalContent"
+    ></div>
 
   </div>
 `;
@@ -316,7 +328,7 @@ function openProductDetails(productId) {
   const image = product.imageUrl
     ? `
       <img
-        class="product-modal-image"
+        class="product-details-image product-modal-image"
         src="${escapeHtml(product.imageUrl)}"
         alt="${escapeHtml(product.name)}"
       >
@@ -456,15 +468,26 @@ onSnapshot(productsRef, async snapshot => {
 
       for (const p of initialProducts) {
 
+        const productData = {
+          id: String(p.id),
+          name: String(p.name),
+          description: String(p.description || ""),
+          price: Number(p.price),
+          symbol: String(p.symbol || "🎁")
+        };
+
+        const original = Number(p.originalPrice);
+
+        if (
+          Number.isFinite(original) &&
+          original > productData.price
+        ) {
+          productData.originalPrice = original;
+        }
+
         await setDoc(
           doc(db, "products", String(p.id)),
-          {
-            id: String(p.id),
-            name: String(p.name),
-            description: String(p.description || ""),
-            price: Number(p.price),
-            symbol: String(p.symbol || "🎁")
-          }
+          productData
         );
 
       }
@@ -500,7 +523,11 @@ function show(view) {
     x.classList.add("hidden");
   });
 
-  $("#" + view + "View").classList.remove("hidden");
+  const target = $("#" + view + "View");
+
+  if (target) {
+    target.classList.remove("hidden");
+  }
 
   document.querySelectorAll(".nav-btn").forEach(b => {
     b.classList.toggle(
@@ -559,6 +586,13 @@ function updateCount() {
 
 
 function addToCart(id) {
+  const product = products.find(p => p.id === id);
+
+  if (!product) {
+    toast("This product is no longer available.");
+    return;
+  }
+
   const item = cart.find(x => x.id === id);
 
   if (item) {
@@ -2179,11 +2213,11 @@ function renderAdmin(logged = isAdmin) {
       const id = button.dataset.saveProductPrice;
 
       const originalInput = document.querySelector(
-        `[data-edit-original="${id}"]`
+        `[data-edit-original="${CSS.escape(id)}"]`
       );
 
       const sellingInput = document.querySelector(
-        `[data-edit-selling="${id}"]`
+        `[data-edit-selling="${CSS.escape(id)}"]`
       );
 
       const sellingPrice = Number(sellingInput.value);
@@ -2223,7 +2257,7 @@ function renderAdmin(logged = isAdmin) {
         };
 
         if (originalPrice === null) {
-          updates.originalPrice = null;
+          updates.originalPrice = deleteField();
         } else {
           updates.originalPrice = originalPrice;
         }
@@ -2559,22 +2593,15 @@ if (productImageInput?.parentElement?.parentElement) {
 const originalPriceInput = $("#productForm")?.elements?.originalPrice;
 const sellingPriceInput = $("#productForm")?.elements?.price;
 
-const discountPreview = document.createElement("div");
-
-discountPreview.id = "discountPreview";
-discountPreview.className = "discount-preview";
-discountPreview.textContent = "Enter both prices to calculate the discount.";
-
-if (sellingPriceInput?.parentElement) {
-
-  sellingPriceInput.parentElement.appendChild(discountPreview);
-
-}
+/* Use the existing HTML preview element. */
+const discountPreview = $("#discountPreview");
 
 
 function updateDiscountPreview() {
 
-  if (!originalPriceInput || !sellingPriceInput) return;
+  if (!originalPriceInput || !sellingPriceInput || !discountPreview) {
+    return;
+  }
 
   const originalText = originalPriceInput.value.trim();
   const sellingText = sellingPriceInput.value.trim();
@@ -2584,7 +2611,8 @@ function updateDiscountPreview() {
     discountPreview.textContent =
       "Enter both prices to calculate the discount.";
 
-    discountPreview.className = "discount-preview";
+    discountPreview.className =
+      "discount-preview";
 
     return;
 
