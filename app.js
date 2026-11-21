@@ -1,4 +1,4 @@
-/* The Creative World of Harshiv — Firebase synchronized shop */
+/* The Creative World of Harshiv — Neon Firebase Shop */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 
@@ -56,7 +56,6 @@ const productsRef = collection(db, "products");
 const ordersRef = collection(db, "orders");
 
 const DELIVERY_CHARGE = 30;
-
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const ALLOWED_IMAGE_TYPES = [
@@ -164,6 +163,68 @@ function escapeHtml(s) {
 }
 
 
+/* DISCOUNT HELPERS */
+
+function getOriginalPrice(product) {
+  const original = Number(product.originalPrice);
+  const selling = Number(product.price);
+
+  if (
+    Number.isFinite(original) &&
+    original > selling &&
+    selling >= 0
+  ) {
+    return original;
+  }
+
+  return null;
+}
+
+
+function getDiscountPercentage(product) {
+  const original = getOriginalPrice(product);
+
+  if (!original) return 0;
+
+  return Math.round(
+    ((original - Number(product.price)) / original) * 100
+  );
+}
+
+
+function getProductPriceHTML(product) {
+  const original = getOriginalPrice(product);
+  const selling = Number(product.price);
+  const discount = getDiscountPercentage(product);
+
+  if (!original) {
+    return `
+      <div class="price">
+        ${money(selling)}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="product-pricing">
+
+      <span class="original-price">
+        ${money(original)}
+      </span>
+
+      <span class="price">
+        ${money(selling)}
+      </span>
+
+      <span class="discount-badge">
+        ${discount}% OFF
+      </span>
+
+    </div>
+  `;
+}
+
+
 /* PRICE CALCULATIONS */
 
 function getSubtotal(items = cart) {
@@ -178,7 +239,9 @@ function getSubtotal(items = cart) {
 
 
 function getFinalTotal(subtotal, extraCharges = 0) {
-  return Number(subtotal) + DELIVERY_CHARGE + Number(extraCharges || 0);
+  return Number(subtotal) +
+    DELIVERY_CHARGE +
+    Number(extraCharges || 0);
 }
 
 
@@ -203,6 +266,129 @@ function updateCheckoutPrices() {
     );
   }
 }
+
+
+/* PRODUCT DETAILS WINDOW */
+
+const productModal = document.createElement("div");
+
+productModal.id = "productDetailsModal";
+productModal.className = "product-modal hidden";
+
+productModal.innerHTML = `
+  <div class="product-modal-backdrop" data-close-product></div>
+
+  <div
+    class="product-modal-content"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="productModalName"
+  >
+
+    <button
+      type="button"
+      class="product-modal-close"
+      aria-label="Close product details"
+      data-close-product
+    >
+      ×
+    </button>
+
+    <div id="productModalContent"></div>
+
+  </div>
+`;
+
+document.body.appendChild(productModal);
+
+
+function closeProductDetails() {
+  productModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+
+function openProductDetails(productId) {
+  const product = products.find(p => p.id === productId);
+
+  if (!product) return;
+
+  const image = product.imageUrl
+    ? `
+      <img
+        class="product-modal-image"
+        src="${escapeHtml(product.imageUrl)}"
+        alt="${escapeHtml(product.name)}"
+      >
+    `
+    : `
+      <div class="product-modal-symbol">
+        ${escapeHtml(product.symbol || "🎁")}
+      </div>
+    `;
+
+  $("#productModalContent").innerHTML = `
+
+    <div class="product-detail-layout">
+
+      <div class="product-detail-image-wrap">
+        ${image}
+      </div>
+
+      <div class="product-detail-info">
+
+        <p class="eyebrow">PRODUCT DETAILS</p>
+
+        <h2 id="productModalName">
+          ${escapeHtml(product.name)}
+        </h2>
+
+        ${getProductPriceHTML(product)}
+
+        <div class="product-detail-description">
+          ${escapeHtml(product.description || "Handmade creation.")}
+        </div>
+
+        <p class="tiny muted">
+          Delivery charge: ${money(DELIVERY_CHARGE)}
+        </p>
+
+        <button
+          type="button"
+          class="primary-btn wide"
+          id="modalAddToCart"
+        >
+          Add to cart
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+  $("#modalAddToCart").onclick = () => {
+    addToCart(product.id);
+    closeProductDetails();
+  };
+
+  productModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+
+productModal.addEventListener("click", e => {
+  if (e.target.closest("[data-close-product]")) {
+    closeProductDetails();
+  }
+});
+
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeProductDetails();
+  }
+});
 
 
 /* SHARED WHATSAPP SETTINGS */
@@ -372,6 +558,28 @@ function updateCount() {
 }
 
 
+function addToCart(id) {
+  const item = cart.find(x => x.id === id);
+
+  if (item) {
+    item.qty++;
+  } else {
+    cart.push({
+      id,
+      qty: 1
+    });
+  }
+
+  save("cwh_cart", cart);
+
+  updateCount();
+
+  renderCart();
+
+  toast("Added to your cart.");
+}
+
+
 /* DISPLAY PRODUCTS */
 
 function renderProducts() {
@@ -380,26 +588,44 @@ function renderProducts() {
 
     <article class="product">
 
-      <div class="product-art">
+      <button
+        type="button"
+        class="product-open"
+        data-product-details="${escapeHtml(p.id)}"
+        aria-label="View details for ${escapeHtml(p.name)}"
+      >
 
-        ${p.imageUrl
-          ? `<img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
-          : `<span>${escapeHtml(p.symbol || "🎁")}</span>`
-        }
+        <div class="product-art">
 
-      </div>
+          ${p.imageUrl
+            ? `<img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`
+            : `<span>${escapeHtml(p.symbol || "🎁")}</span>`
+          }
 
-      <div class="product-info">
-
-        <h3>${escapeHtml(p.name)}</h3>
-
-        <p>${escapeHtml(p.description || "Handmade creation.")}</p>
-
-        <div class="price">
-          ${money(p.price)}
         </div>
 
-        <button data-add="${escapeHtml(p.id)}">
+        <div class="product-info">
+
+          <h3>${escapeHtml(p.name)}</h3>
+
+          <p>${escapeHtml(p.description || "Handmade creation.")}</p>
+
+          ${getProductPriceHTML(p)}
+
+          <span class="view-details-label">
+            View product details →
+          </span>
+
+        </div>
+
+      </button>
+
+      <div class="product-card-action">
+
+        <button
+          type="button"
+          data-add="${escapeHtml(p.id)}"
+        >
           Add to cart
         </button>
 
@@ -413,26 +639,16 @@ function renderProducts() {
   document.querySelectorAll("[data-add]").forEach(b => {
 
     b.addEventListener("click", () => {
+      addToCart(b.dataset.add);
+    });
 
-      const id = b.dataset.add;
+  });
 
-      const item = cart.find(x => x.id === id);
 
-      if (item) {
-        item.qty++;
-      } else {
-        cart.push({
-          id,
-          qty: 1
-        });
-      }
+  document.querySelectorAll("[data-product-details]").forEach(b => {
 
-      save("cwh_cart", cart);
-
-      updateCount();
-
-      toast("Added to your cart.");
-
+    b.addEventListener("click", () => {
+      openProductDetails(b.dataset.productDetails);
     });
 
   });
@@ -466,6 +682,8 @@ function renderCart() {
     checkout.classList.add("hidden");
 
     $("#backShop").onclick = () => show("shop");
+
+    updateCheckoutPrices();
 
     return;
 
@@ -603,13 +821,9 @@ function changeQty(id, delta) {
 /* CUSTOMIZATION FEATURE */
 
 const customizeToggle = $("#customizeToggle");
-
 const customizationPanel = $("#customizationPanel");
-
 const customizationText = $("#customizationText");
-
 const saveCustomization = $("#saveCustomization");
-
 const customizationSavedBox = $("#customizationSaved");
 
 
@@ -762,7 +976,6 @@ $("#checkoutForm").addEventListener("submit", async e => {
   );
 
   const extraCharges = 0;
-
   const extraChargeReason = "";
 
   const total = getFinalTotal(
@@ -797,7 +1010,9 @@ $("#checkoutForm").addEventListener("submit", async e => {
 
     extraCharges,
 
-    extraChargeReason,    total,
+    extraChargeReason,
+
+    total,
 
     customization: customizationSaved ? customization : "",
 
@@ -920,136 +1135,372 @@ Please confirm this order.
 /* CUSTOMER ACCOUNT AND ORDER HISTORY */
 
 function renderCustomerAccount() {
-  const user = currentUser && currentUser.uid !== ADMIN_UID ? currentUser : null;
+  const user = currentUser && currentUser.uid !== ADMIN_UID
+    ? currentUser
+    : null;
+
   $("#customerSignedOut").classList.toggle("hidden", !!user);
   $("#customerSignedIn").classList.toggle("hidden", !user);
+
   if (user) {
     $("#customerEmail").textContent = user.email || "Customer";
     renderCustomerOrders();
   }
 }
 
+
 function listenToCustomerOrders(user) {
+
   if (customerOrdersUnsubscribe) {
     customerOrdersUnsubscribe();
     customerOrdersUnsubscribe = null;
   }
+
   customerOrders = [];
+
   if (!user || user.uid === ADMIN_UID) {
     renderCustomerOrders();
     return;
   }
-  const ownOrdersQuery = query(ordersRef, where("customerUid", "==", user.uid));
-  customerOrdersUnsubscribe = onSnapshot(ownOrdersQuery, snapshot => {
-    customerOrders = snapshot.docs.map(d => d.data());
-    customerOrders.sort((a,b) => String(b.date || "").localeCompare(String(a.date || "")));
-    renderCustomerOrders();
-  }, error => {
-    console.error("Customer orders loading error:", error);
-    $("#customerOrdersList").innerHTML = '<p class="muted">Could not load orders. Please check Firestore rules.</p>';
-  });
+
+  const ownOrdersQuery = query(
+    ordersRef,
+    where("customerUid", "==", user.uid)
+  );
+
+  customerOrdersUnsubscribe = onSnapshot(
+    ownOrdersQuery,
+
+    snapshot => {
+
+      customerOrders = snapshot.docs.map(d => d.data());
+
+      customerOrders.sort((a, b) =>
+        String(b.date || "").localeCompare(String(a.date || ""))
+      );
+
+      renderCustomerOrders();
+
+    },
+
+    error => {
+
+      console.error("Customer orders loading error:", error);
+
+      $("#customerOrdersList").innerHTML =
+        '<p class="muted">Could not load orders. Please check Firestore rules.</p>';
+
+    }
+  );
+
 }
 
+
 function renderCustomerOrders() {
+
   const host = $("#customerOrdersList");
+
   if (!host) return;
+
   if (!currentUser || currentUser.uid === ADMIN_UID) {
-    host.innerHTML = '<p class="muted">Sign in with a customer account to see your orders.</p>';
+
+    host.innerHTML =
+      '<p class="muted">Sign in with a customer account to see your orders.</p>';
+
     return;
+
   }
+
   if (!customerOrders.length) {
-    host.innerHTML = '<p class="muted">You have no orders yet. Your new orders will appear here.</p>';
+
+    host.innerHTML =
+      '<p class="muted">You have no orders yet. Your new orders will appear here.</p>';
+
     return;
+
   }
+
   host.innerHTML = customerOrders.map(o => {
+
     const subtotal = Number(o.subtotal || 0);
     const delivery = Number(o.deliveryCharge ?? DELIVERY_CHARGE);
     const extra = Number(o.extraCharges || 0);
     const total = Number(o.total ?? subtotal + delivery + extra);
+
     const pending = o.returnRequestStatus === "Pending";
     const requestStatus = o.returnRequestStatus || "No request";
-    return `<article class="customer-order-card">
-      <b>${escapeHtml(o.id)} — ${escapeHtml(o.date || "")}</b><br>
-      <span class="status-pill">${escapeHtml(o.status || "New")}</span>
-      <p>${(o.items || []).map(i => `${escapeHtml(i.name)} × ${Number(i.qty || 0)}`).join("<br>")}</p>
-      <div class="price-summary">
-        <div class="price-summary-row"><span>Product subtotal</span><b>${money(subtotal)}</b></div>
-        <div class="price-summary-row"><span>Delivery charge</span><b>${money(delivery)}</b></div>
-        <div class="price-summary-row"><span>Additional charge</span><b>${money(extra)}</b></div>
-        <div class="price-summary-row final-price"><span>Final total</span><b>${money(total)}</b></div>
-      </div>
-      ${o.extraChargeReason ? `<div class="order-customization"><b>Additional charge reason:</b><br>${escapeHtml(o.extraChargeReason)}</div>` : ""}
-      <div class="request-box">
-        <b>Return / replacement request:</b> <span class="status-pill">${escapeHtml(requestStatus)}</span>
-        ${o.returnRequestType ? `<p><b>Type:</b> ${escapeHtml(o.returnRequestType)}<br><b>Reason:</b> ${escapeHtml(o.returnRequestReason || "")}</p>` : ""}
-        ${pending ? '<p class="tiny muted">Your request is waiting for the shop to review it.</p>' : `
-          <form data-customer-request="${escapeHtml(o.id)}">
-            <label>Request type<select name="type" required><option value="">Choose one</option><option value="Return">Return</option><option value="Replacement">Replacement</option></select></label>
-            <label>Reason<textarea name="reason" rows="3" maxlength="500" required placeholder="Please explain why you are requesting this."></textarea></label>
-            <button class="primary-btn" type="submit">Send request</button>
-          </form>`}
-      </div>
-    </article>`;
+
+    return `
+
+      <article class="customer-order-card">
+
+        <b>
+          ${escapeHtml(o.id)} — ${escapeHtml(o.date || "")}
+        </b>
+
+        <br>
+
+        <span class="status-pill">
+          ${escapeHtml(o.status || "New")}
+        </span>
+
+        <p>
+          ${(o.items || []).map(i =>
+            `${escapeHtml(i.name)} × ${Number(i.qty || 0)}`
+          ).join("<br>")}
+        </p>
+
+        <div class="price-summary">
+
+          <div class="price-summary-row">
+            <span>Product subtotal</span>
+            <b>${money(subtotal)}</b>
+          </div>
+
+          <div class="price-summary-row">
+            <span>Delivery charge</span>
+            <b>${money(delivery)}</b>
+          </div>
+
+          <div class="price-summary-row">
+            <span>Additional charge</span>
+            <b>${money(extra)}</b>
+          </div>
+
+          <div class="price-summary-row final-price">
+            <span>Final total</span>
+            <b>${money(total)}</b>
+          </div>
+
+        </div>
+
+        ${o.extraChargeReason ? `
+          <div class="order-customization">
+            <b>Additional charge reason:</b><br>
+            ${escapeHtml(o.extraChargeReason)}
+          </div>
+        ` : ""}
+
+        <div class="request-box">
+
+          <b>Return / replacement request:</b>
+
+          <span class="status-pill">
+            ${escapeHtml(requestStatus)}
+          </span>
+
+          ${o.returnRequestType ? `
+            <p>
+              <b>Type:</b> ${escapeHtml(o.returnRequestType)}
+              <br>
+              <b>Reason:</b> ${escapeHtml(o.returnRequestReason || "")}
+            </p>
+          ` : ""}
+
+          ${pending ? `
+            <p class="tiny muted">
+              Your request is waiting for the shop to review it.
+            </p>
+          ` : `
+
+            <form data-customer-request="${escapeHtml(o.id)}">
+
+              <label>
+                Request type
+
+                <select name="type" required>
+                  <option value="">Choose one</option>
+                  <option value="Return">Return</option>
+                  <option value="Replacement">Replacement</option>
+                </select>
+
+              </label>
+
+              <label>
+                Reason
+
+                <textarea
+                  name="reason"
+                  rows="3"
+                  maxlength="500"
+                  required
+                  placeholder="Please explain why you are requesting this."
+                ></textarea>
+
+              </label>
+
+              <button class="primary-btn" type="submit">
+                Send request
+              </button>
+
+            </form>
+
+          `}
+
+        </div>
+
+      </article>
+
+    `;
+
   }).join("");
+
+
   host.querySelectorAll("[data-customer-request]").forEach(form => {
+
     form.addEventListener("submit", async e => {
+
       e.preventDefault();
+
       const user = auth.currentUser;
-      if (!user || user.uid === ADMIN_UID) return toast("Please sign in to your customer account.");
+
+      if (!user || user.uid === ADMIN_UID) {
+        return toast("Please sign in to your customer account.");
+      }
+
       const data = new FormData(form);
+
       const type = String(data.get("type") || "");
       const reason = String(data.get("reason") || "").trim();
-      if (!["Return", "Replacement"].includes(type) || !reason) return toast("Choose a request type and enter a reason.");
-      const button = form.querySelector("button[type=submit]");
-      button.disabled = true;
-      try {
-        await updateDoc(doc(db, "orders", form.dataset.customerRequest), {
-          returnRequestType: type,
-          returnRequestReason: reason,
-          returnRequestStatus: "Pending",
-          returnRequestedAt: new Date().toISOString()
-        });
-        toast("Your request has been sent to the shop.");
-      } catch (error) {
-        console.error("Return/replacement request error:", error);
-        toast("Could not send the request. Please check Firestore rules.");
-        button.disabled = false;
+
+      if (!["Return", "Replacement"].includes(type) || !reason) {
+        return toast("Choose a request type and enter a reason.");
       }
+
+      const button = form.querySelector("button[type=submit]");
+
+      button.disabled = true;
+
+      try {
+
+        await updateDoc(
+          doc(db, "orders", form.dataset.customerRequest),
+          {
+            returnRequestType: type,
+            returnRequestReason: reason,
+            returnRequestStatus: "Pending",
+            returnRequestedAt: new Date().toISOString()
+          }
+        );
+
+        toast("Your request has been sent to the shop.");
+
+      } catch (error) {
+
+        console.error("Return/replacement request error:", error);
+
+        toast("Could not send the request. Please check Firestore rules.");
+
+        button.disabled = false;
+
+      }
+
     });
+
   });
+
 }
 
+
 $("#customerLoginForm").addEventListener("submit", async e => {
+
   e.preventDefault();
+
   const data = new FormData(e.currentTarget);
+
   try {
-    const result = await signInWithEmailAndPassword(auth, String(data.get("email")).trim(), String(data.get("password")));
-    if (result.user.uid === ADMIN_UID) { await signOut(auth); toast("Please use the Admin page for the admin account."); return; }
+
+    const result = await signInWithEmailAndPassword(
+      auth,
+      String(data.get("email")).trim(),
+      String(data.get("password"))
+    );
+
+    if (result.user.uid === ADMIN_UID) {
+
+      await signOut(auth);
+
+      toast("Please use the Admin page for the admin account.");
+
+      return;
+
+    }
+
     e.currentTarget.reset();
+
     toast("Signed in successfully.");
+
   } catch (error) {
+
     console.error(error);
-    toast(error.code === "auth/invalid-credential" ? "Incorrect email or password." : "Could not sign in. Check the details and try again.");
+
+    toast(
+      error.code === "auth/invalid-credential"
+        ? "Incorrect email or password."
+        : "Could not sign in. Check the details and try again."
+    );
+
   }
+
 });
+
 
 $("#customerRegisterForm").addEventListener("submit", async e => {
+
   e.preventDefault();
+
   const data = new FormData(e.currentTarget);
+
   try {
-    const result = await createUserWithEmailAndPassword(auth, String(data.get("email")).trim(), String(data.get("password")));
-    if (result.user.uid === ADMIN_UID) { await signOut(auth); return; }
+
+    const result = await createUserWithEmailAndPassword(
+      auth,
+      String(data.get("email")).trim(),
+      String(data.get("password"))
+    );
+
+    if (result.user.uid === ADMIN_UID) {
+      await signOut(auth);
+      return;
+    }
+
     e.currentTarget.reset();
+
     toast("Customer account created successfully.");
+
   } catch (error) {
+
     console.error(error);
-    toast(error.code === "auth/email-already-in-use" ? "This email already has an account. Please sign in." : error.code === "auth/weak-password" ? "Choose a stronger password with at least 6 characters." : "Could not create account. Check Firebase Authentication settings.");
+
+    toast(
+      error.code === "auth/email-already-in-use"
+        ? "This email already has an account. Please sign in."
+        : error.code === "auth/weak-password"
+          ? "Choose a stronger password with at least 6 characters."
+          : "Could not create account. Check Firebase Authentication settings."
+    );
+
   }
+
 });
 
+
 $("#customerLogoutBtn").onclick = async () => {
-  try { await signOut(auth); toast("You have signed out."); }
-  catch (error) { console.error(error); toast("Could not sign out."); }
+
+  try {
+
+    await signOut(auth);
+
+    toast("You have signed out.");
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast("Could not sign out.");
+
+  }
+
 };
 
 
@@ -1068,7 +1519,6 @@ $("#loginForm").addEventListener("submit", async e => {
   const password = String(
     form.get("password") || ""
   );
-
 
   try {
 
@@ -1102,9 +1552,7 @@ $("#loginForm").addEventListener("submit", async e => {
 
 
 $("#logoutBtn").onclick = async () => {
-
   await signOut(auth);
-
 };
 
 
@@ -1113,13 +1561,9 @@ $("#logoutBtn").onclick = async () => {
 function listenToOrders() {
 
   if (ordersUnsubscribe) {
-
     ordersUnsubscribe();
-
     ordersUnsubscribe = null;
-
   }
-
 
   ordersUnsubscribe = onSnapshot(
     ordersRef,
@@ -1129,7 +1573,7 @@ function listenToOrders() {
       orders = snapshot.docs.map(d => d.data());
 
       orders.sort((a, b) =>
-        b.id.localeCompare(a.id)
+        String(b.id || "").localeCompare(String(a.id || ""))
       );
 
       if (isAdmin) {
@@ -1156,25 +1600,49 @@ function listenToOrders() {
 onAuthStateChanged(auth, user => {
 
   currentUser = user || null;
+
   const allowed = !!user && user.uid === ADMIN_UID;
+
   isAdmin = allowed;
 
   if (allowed) {
-    if (customerOrdersUnsubscribe) { customerOrdersUnsubscribe(); customerOrdersUnsubscribe = null; }
-    customerOrders = [];
-    listenToOrders();
-  } else {
-    if (ordersUnsubscribe) { ordersUnsubscribe(); ordersUnsubscribe = null; }
-    orders = [];
-    if (user) listenToCustomerOrders(user);
-    else {
-      if (customerOrdersUnsubscribe) { customerOrdersUnsubscribe(); customerOrdersUnsubscribe = null; }
-      customerOrders = [];
+
+    if (customerOrdersUnsubscribe) {
+      customerOrdersUnsubscribe();
+      customerOrdersUnsubscribe = null;
     }
+
+    customerOrders = [];
+
+    listenToOrders();
+
+  } else {
+
+    if (ordersUnsubscribe) {
+      ordersUnsubscribe();
+      ordersUnsubscribe = null;
+    }
+
+    orders = [];
+
+    if (user) {
+      listenToCustomerOrders(user);
+    } else {
+
+      if (customerOrdersUnsubscribe) {
+        customerOrdersUnsubscribe();
+        customerOrdersUnsubscribe = null;
+      }
+
+      customerOrders = [];
+
+    }
+
   }
 
   renderAdmin(allowed);
   renderCustomerAccount();
+
 });
 
 
@@ -1196,7 +1664,6 @@ function renderAdmin(logged = isAdmin) {
 
 
   $("#orderTotal").textContent = orders.length;
-
   $("#productTotal").textContent = products.length;
 
 
@@ -1224,7 +1691,6 @@ function renderAdmin(logged = isAdmin) {
           getFinalTotal(subtotal, extra)
         );
 
-
         return `
 
           <div class="order-card">
@@ -1243,10 +1709,8 @@ function renderAdmin(logged = isAdmin) {
 
             <br><br>
 
-            ${o.items.map(i =>
-
+            ${(o.items || []).map(i =>
               `${escapeHtml(i.name)} × ${i.qty}`
-
             ).join("<br>")}
 
             <br><br>
@@ -1275,18 +1739,12 @@ function renderAdmin(logged = isAdmin) {
 
             </div>
 
-
-            ${
-              o.extraChargeReason
-                ? `
-                  <div class="order-customization">
-                    <b>Admin charge reason:</b><br>
-                    ${escapeHtml(o.extraChargeReason)}
-                  </div>
-                `
-                : ""
-            }
-
+            ${o.extraChargeReason ? `
+              <div class="order-customization">
+                <b>Admin charge reason:</b><br>
+                ${escapeHtml(o.extraChargeReason)}
+              </div>
+            ` : ""}
 
             <br>
 
@@ -1296,41 +1754,56 @@ function renderAdmin(logged = isAdmin) {
               Address: ${escapeHtml(o.address)}
             </span>
 
+            ${o.customization ? `
+              <div class="order-customization">
+                <b>✨ Customer Customization:</b>
+                <br>
+                ${escapeHtml(o.customization)}
+              </div>
+            ` : ""}
 
-            ${
-              o.customization
-                ? `
-                  <div class="order-customization">
-                    <b>✨ Customer Customization:</b>
-                    <br>
-                    ${escapeHtml(o.customization)}
-                  </div>
-                `
-                : ""
-            }
-
-
-            ${
-              o.notes
-                ? `
-                  <div class="tiny">
-                    <b>Extra instructions:</b>
-                    ${escapeHtml(o.notes)}
-                  </div>
-                `
-                : ""
-            }
-
+            ${o.notes ? `
+              <div class="tiny">
+                <b>Extra instructions:</b>
+                ${escapeHtml(o.notes)}
+              </div>
+            ` : ""}
 
             ${o.returnRequestType ? `
               <div class="request-box">
-                <b>Customer ${escapeHtml(o.returnRequestType)} request</b><br>
-                <span class="status-pill">${escapeHtml(o.returnRequestStatus || "Pending")}</span>
-                <p>${escapeHtml(o.returnRequestReason || "No reason supplied")}</p>
+
+                <b>Customer ${escapeHtml(o.returnRequestType)} request</b>
+
+                <br>
+
+                <span class="status-pill">
+                  ${escapeHtml(o.returnRequestStatus || "Pending")}
+                </span>
+
+                <p>
+                  ${escapeHtml(o.returnRequestReason || "No reason supplied")}
+                </p>
+
                 ${o.returnRequestStatus === "Pending" ? `
-                  <button class="primary-btn" data-return-decision="${escapeHtml(o.id)}" data-decision="Approved">Approve</button>
-                  <button class="secondary-btn" data-return-decision="${escapeHtml(o.id)}" data-decision="Rejected">Reject</button>
+
+                  <button
+                    class="primary-btn"
+                    data-return-decision="${escapeHtml(o.id)}"
+                    data-decision="Approved"
+                  >
+                    Approve
+                  </button>
+
+                  <button
+                    class="secondary-btn"
+                    data-return-decision="${escapeHtml(o.id)}"
+                    data-decision="Rejected"
+                  >
+                    Reject
+                  </button>
+
                 ` : ""}
+
               </div>
             ` : ""}
 
@@ -1343,14 +1816,12 @@ function renderAdmin(logged = isAdmin) {
               Mark confirmed
             </button>
 
-
             <button
               class="secondary-btn"
               data-delete-order="${escapeHtml(o.id)}"
             >
               Delete
             </button>
-
 
             <div class="admin-extra-charge">
 
@@ -1370,9 +1841,7 @@ function renderAdmin(logged = isAdmin) {
                   value="${extra}"
                   data-extra-amount="${escapeHtml(o.id)}"
                 >
-
               </label>
-
 
               <label>
                 Reason for extra charge
@@ -1384,9 +1853,7 @@ function renderAdmin(logged = isAdmin) {
                   placeholder="Enter the reason"
                   data-extra-reason="${escapeHtml(o.id)}"
                 >
-
               </label>
-
 
               <button
                 class="primary-btn"
@@ -1406,20 +1873,37 @@ function renderAdmin(logged = isAdmin) {
     : '<p class="muted">No new orders yet.</p>';
 
 
-  /* APPROVE OR REJECT CUSTOMER RETURN / REPLACEMENT REQUESTS */
+  /* APPROVE OR REJECT CUSTOMER REQUESTS */
+
   document.querySelectorAll("[data-return-decision]").forEach(b => {
+
     b.onclick = async () => {
-      if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) return toast("Admin access required.");
-      try {
-        await updateDoc(doc(db, "orders", b.dataset.returnDecision), {
-          returnRequestStatus: b.dataset.decision
-        });
-        toast(`Customer request ${b.dataset.decision.toLowerCase()}.`);
-      } catch (error) {
-        console.error(error);
-        toast("Could not update the customer request.");
+
+      if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
+        return toast("Admin access required.");
       }
+
+      try {
+
+        await updateDoc(
+          doc(db, "orders", b.dataset.returnDecision),
+          {
+            returnRequestStatus: b.dataset.decision
+          }
+        );
+
+        toast(`Customer request ${b.dataset.decision.toLowerCase()}.`);
+
+      } catch (error) {
+
+        console.error(error);
+
+        toast("Could not update the customer request.");
+
+      }
+
     };
+
   });
 
 
@@ -1494,7 +1978,6 @@ function renderAdmin(logged = isAdmin) {
 
       }
 
-
       const orderId = b.dataset.saveExtra;
 
       const amountInput = document.querySelector(
@@ -1505,11 +1988,8 @@ function renderAdmin(logged = isAdmin) {
         `[data-extra-reason="${orderId}"]`
       );
 
-
       const amount = Number(amountInput.value);
-
       const reason = reasonInput.value.trim();
-
 
       if (!Number.isFinite(amount) || amount < 0) {
 
@@ -1519,7 +1999,6 @@ function renderAdmin(logged = isAdmin) {
 
       }
 
-
       if (amount > 0 && !reason) {
 
         toast("Please enter the reason for the extra charge.");
@@ -1527,7 +2006,6 @@ function renderAdmin(logged = isAdmin) {
         return;
 
       }
-
 
       const order = orders.find(o => o.id === orderId);
 
@@ -1539,7 +2017,6 @@ function renderAdmin(logged = isAdmin) {
 
       }
 
-
       const subtotal = Number(
         order.subtotal ??
         (order.total || 0) - DELIVERY_CHARGE
@@ -1550,25 +2027,18 @@ function renderAdmin(logged = isAdmin) {
         amount
       );
 
-
       b.disabled = true;
-
       b.textContent = "Saving...";
-
 
       try {
 
         await updateDoc(
           doc(db, "orders", orderId),
-
           {
             extraCharges: amount,
-
             extraChargeReason: reason,
-
             total: newTotal
           }
-
         );
 
         toast("Extra charge and final total saved!");
@@ -1582,7 +2052,6 @@ function renderAdmin(logged = isAdmin) {
       } finally {
 
         b.disabled = false;
-
         b.textContent = "Save extra charge";
 
       }
@@ -1594,7 +2063,9 @@ function renderAdmin(logged = isAdmin) {
 
   /* DISPLAY ADMIN PRODUCTS */
 
-  $("#adminProducts").innerHTML = products.map(p => `    <div class="admin-product">
+  $("#adminProducts").innerHTML = products.map(p => `
+
+    <div class="admin-product">
 
       <div class="admin-product-details">
 
@@ -1605,11 +2076,47 @@ function renderAdmin(logged = isAdmin) {
         }
 
         <span>
-          ${escapeHtml(p.name)} — ${money(p.price)}
+          ${escapeHtml(p.name)}
         </span>
 
       </div>
 
+      <div class="admin-product-pricing">
+
+        <label>
+          Original / cut price (₹)
+
+          <input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Optional"
+            value="${getOriginalPrice(p) ?? ""}"
+            data-edit-original="${escapeHtml(p.id)}"
+          >
+        </label>
+
+        <label>
+          Selling price (₹)
+
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value="${Number(p.price)}"
+            data-edit-selling="${escapeHtml(p.id)}"
+          >
+        </label>
+
+        <button
+          type="button"
+          class="primary-btn"
+          data-save-product-price="${escapeHtml(p.id)}"
+        >
+          Save prices
+        </button>
+
+      </div>
 
       <div class="admin-product-controls">
 
@@ -1627,6 +2134,7 @@ function renderAdmin(logged = isAdmin) {
 
         <label class="image-url-label">
           ImageKit image URL
+
           <input
             type="url"
             placeholder="Paste ImageKit URL here"
@@ -1657,11 +2165,99 @@ function renderAdmin(logged = isAdmin) {
   `).join("");
 
 
-  /* SAVE IMAGEKIT URL FOR AN EXISTING PRODUCT */
+  /* SAVE EXISTING PRODUCT PRICES */
+
+  document.querySelectorAll("[data-save-product-price]").forEach(button => {
+
+    button.onclick = async () => {
+
+      if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
+        toast("Admin access required.");
+        return;
+      }
+
+      const id = button.dataset.saveProductPrice;
+
+      const originalInput = document.querySelector(
+        `[data-edit-original="${id}"]`
+      );
+
+      const sellingInput = document.querySelector(
+        `[data-edit-selling="${id}"]`
+      );
+
+      const sellingPrice = Number(sellingInput.value);
+
+      const originalText = originalInput.value.trim();
+
+      const originalPrice = originalText === ""
+        ? null
+        : Number(originalText);
+
+      if (
+        !Number.isFinite(sellingPrice) ||
+        sellingPrice < 0
+      ) {
+        toast("Enter a valid selling price.");
+        return;
+      }
+
+      if (
+        originalPrice !== null &&
+        (
+          !Number.isFinite(originalPrice) ||
+          originalPrice <= sellingPrice
+        )
+      ) {
+        toast("Original price must be higher than selling price.");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Saving...";
+
+      try {
+
+        const updates = {
+          price: sellingPrice
+        };
+
+        if (originalPrice === null) {
+          updates.originalPrice = null;
+        } else {
+          updates.originalPrice = originalPrice;
+        }
+
+        await updateDoc(
+          doc(db, "products", id),
+          updates
+        );
+
+        toast("Product prices updated!");
+
+      } catch (error) {
+
+        console.error("Product price update error:", error);
+
+        toast("Could not update prices. Check Firestore rules.");
+
+      } finally {
+
+        button.disabled = false;
+        button.textContent = "Save prices";
+
+      }
+
+    };
+
+  });
+
+
+  /* SAVE IMAGEKIT URL FOR EXISTING PRODUCT */
 
   document.querySelectorAll("[data-save-product-image-url]").forEach(button => {
 
-    button.addEventListener("click", async () => {
+    button.onclick = async () => {
 
       if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
         toast("Admin access required.");
@@ -1669,7 +2265,11 @@ function renderAdmin(logged = isAdmin) {
       }
 
       const productId = button.dataset.saveProductImageUrl;
-      const input = document.querySelector(`[data-product-image-url="${CSS.escape(productId)}"]`);
+
+      const input = document.querySelector(
+        `[data-product-image-url="${CSS.escape(productId)}"]`
+      );
+
       const imageUrl = String(input?.value || "").trim();
 
       if (!imageUrl) {
@@ -1678,32 +2278,53 @@ function renderAdmin(logged = isAdmin) {
       }
 
       try {
+
         const parsedUrl = new URL(imageUrl);
-        if (parsedUrl.protocol !== "https:") throw new Error("HTTPS required");
+
+        if (parsedUrl.protocol !== "https:") {
+          throw new Error("HTTPS required");
+        }
+
       } catch {
+
         toast("Please enter a valid image URL beginning with https://");
+
         return;
+
       }
 
       button.disabled = true;
+
       const oldText = button.textContent;
+
       button.textContent = "Saving...";
 
       try {
-        await updateDoc(doc(db, "products", productId), {
-          imageUrl,
-          imagePath: ""
-        });
+
+        await updateDoc(
+          doc(db, "products", productId),
+          {
+            imageUrl,
+            imagePath: ""
+          }
+        );
+
         toast("Image URL saved! Customers will see this picture.");
+
       } catch (error) {
+
         console.error("Image URL save error:", error);
+
         toast("Could not save image URL. Check Firestore rules.");
+
       } finally {
+
         button.disabled = false;
         button.textContent = oldText;
+
       }
 
-    });
+    };
 
   });
 
@@ -1722,11 +2343,9 @@ function renderAdmin(logged = isAdmin) {
 
       }
 
-
       const file = input.files[0];
 
       if (!file) return;
-
 
       if (
         !ALLOWED_IMAGE_TYPES.includes(file.type) ||
@@ -1741,7 +2360,6 @@ function renderAdmin(logged = isAdmin) {
 
       }
 
-
       const product = products.find(
         p => p.id === input.dataset.productImage
       );
@@ -1754,9 +2372,7 @@ function renderAdmin(logged = isAdmin) {
 
       }
 
-
       input.disabled = true;
-
 
       try {
 
@@ -1770,7 +2386,6 @@ function renderAdmin(logged = isAdmin) {
 
         const imageRef = ref(storage, imagePath);
 
-
         await uploadBytes(
           imageRef,
           file,
@@ -1779,9 +2394,7 @@ function renderAdmin(logged = isAdmin) {
           }
         );
 
-
         const imageUrl = await getDownloadURL(imageRef);
-
 
         await updateDoc(
           doc(db, "products", product.id),
@@ -1790,7 +2403,6 @@ function renderAdmin(logged = isAdmin) {
             imagePath
           }
         );
-
 
         if (product.imagePath) {
 
@@ -1811,9 +2423,7 @@ function renderAdmin(logged = isAdmin) {
 
         }
 
-
         toast("Product picture updated for all devices!");
-
 
       } catch (error) {
 
@@ -1831,7 +2441,6 @@ function renderAdmin(logged = isAdmin) {
       } finally {
 
         input.disabled = false;
-
         input.value = "";
 
       }
@@ -1848,25 +2457,19 @@ function renderAdmin(logged = isAdmin) {
     b.onclick = async () => {
 
       if (!isAdmin) {
-
         toast("Admin access required.");
-
         return;
-
       }
-
 
       const product = products.find(
         p => p.id === b.dataset.delProduct
       );
-
 
       try {
 
         await deleteDoc(
           doc(db, "products", b.dataset.delProduct)
         );
-
 
         if (product?.imagePath) {
 
@@ -1886,7 +2489,6 @@ function renderAdmin(logged = isAdmin) {
           }
 
         }
-
 
         toast("Product deleted.");
 
@@ -1912,48 +2514,135 @@ function renderAdmin(logged = isAdmin) {
 /* PRODUCT IMAGE PREVIEW */
 
 const productImageInput = $("#productImage");
-
 const productImagePreview = $("#productImagePreview");
 
 
-/* IMAGEKIT URL FIELD FOR NEW PRODUCTS */
+/* ADD IMAGEKIT URL FIELD FOR NEW PRODUCTS */
 
 const productImageUrlLabel = document.createElement("label");
+
 productImageUrlLabel.className = "image-url-label";
+
 productImageUrlLabel.innerHTML = `
   ImageKit image URL (optional)
+
   <input
     type="url"
     id="productImageUrl"
     placeholder="Paste your ImageKit image URL here"
   >
-  <small>Upload the picture to ImageKit first, then paste its URL here.</small>
+
+  <small>
+    Upload the picture to ImageKit first, then paste its URL here.
+  </small>
 `;
 
 if (productImageInput?.parentElement?.parentElement) {
+
   productImageInput.parentElement.parentElement.insertBefore(
     productImageUrlLabel,
     productImageInput.parentElement
   );
+
 } else if (productImageInput?.parentElement) {
+
   productImageInput.parentElement.insertAdjacentElement(
     "beforebegin",
     productImageUrlLabel
   );
+
 }
 
+
+/* DISCOUNT PREVIEW */
+
+const originalPriceInput = $("#productForm")?.elements?.originalPrice;
+const sellingPriceInput = $("#productForm")?.elements?.price;
+
+const discountPreview = document.createElement("div");
+
+discountPreview.id = "discountPreview";
+discountPreview.className = "discount-preview";
+discountPreview.textContent = "Enter both prices to calculate the discount.";
+
+if (sellingPriceInput?.parentElement) {
+
+  sellingPriceInput.parentElement.appendChild(discountPreview);
+
+}
+
+
+function updateDiscountPreview() {
+
+  if (!originalPriceInput || !sellingPriceInput) return;
+
+  const originalText = originalPriceInput.value.trim();
+  const sellingText = sellingPriceInput.value.trim();
+
+  if (!originalText || !sellingText) {
+
+    discountPreview.textContent =
+      "Enter both prices to calculate the discount.";
+
+    discountPreview.className = "discount-preview";
+
+    return;
+
+  }
+
+  const original = Number(originalText);
+  const selling = Number(sellingText);
+
+  if (
+    !Number.isFinite(original) ||
+    !Number.isFinite(selling) ||
+    original <= selling ||
+    selling < 0
+  ) {
+
+    discountPreview.textContent =
+      "Original price must be higher than selling price.";
+
+    discountPreview.className =
+      "discount-preview discount-preview-error";
+
+    return;
+
+  }
+
+  const percentage = Math.round(
+    ((original - selling) / original) * 100
+  );
+
+  discountPreview.textContent =
+    `${percentage}% discount`;
+
+  discountPreview.className =
+    "discount-preview discount-preview-success";
+
+}
+
+
+originalPriceInput?.addEventListener(
+  "input",
+  updateDiscountPreview
+);
+
+sellingPriceInput?.addEventListener(
+  "input",
+  updateDiscountPreview
+);
+
+
+/* IMAGE PREVIEW */
 
 productImageInput.addEventListener("change", () => {
 
   const file = productImageInput.files[0];
 
-
   if (previewObjectUrl) {
-
     URL.revokeObjectURL(previewObjectUrl);
-
   }
-
 
   previewObjectUrl = null;
 
@@ -1961,9 +2650,7 @@ productImageInput.addEventListener("change", () => {
 
   productImagePreview.classList.add("hidden");
 
-
   if (!file) return;
-
 
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
 
@@ -1975,7 +2662,6 @@ productImageInput.addEventListener("change", () => {
 
   }
 
-
   if (file.size > MAX_IMAGE_SIZE) {
 
     productImageInput.value = "";
@@ -1986,9 +2672,7 @@ productImageInput.addEventListener("change", () => {
 
   }
 
-
   previewObjectUrl = URL.createObjectURL(file);
-
 
   productImagePreview.innerHTML = `
 
@@ -1998,7 +2682,6 @@ productImageInput.addEventListener("change", () => {
     >
 
   `;
-
 
   productImagePreview.classList.remove("hidden");
 
@@ -2011,7 +2694,6 @@ $("#productForm").addEventListener("submit", async e => {
 
   e.preventDefault();
 
-
   if (!isAdmin || auth.currentUser?.uid !== ADMIN_UID) {
 
     toast("Admin access required.");
@@ -2020,11 +2702,18 @@ $("#productForm").addEventListener("submit", async e => {
 
   }
 
-
   const form = e.currentTarget;
-
   const f = new FormData(form);
 
+  const sellingPrice = Number(f.get("price"));
+
+  const originalText = String(
+    f.get("originalPrice") || ""
+  ).trim();
+
+  const originalPrice = originalText === ""
+    ? null
+    : Number(originalText);
 
   const product = {
 
@@ -2034,9 +2723,7 @@ $("#productForm").addEventListener("submit", async e => {
       f.get("name") || ""
     ).trim(),
 
-    price: Number(
-      f.get("price")
-    ),
+    price: sellingPrice,
 
     description: String(
       f.get("description") || ""
@@ -2050,18 +2737,34 @@ $("#productForm").addEventListener("submit", async e => {
 
 
   const imageFile = productImageInput.files[0] || null;
+
   const imageUrlInput = $("#productImageUrl");
-  const enteredImageUrl = String(imageUrlInput?.value || "").trim();
+
+  const enteredImageUrl = String(
+    imageUrlInput?.value || ""
+  ).trim();
+
 
   if (enteredImageUrl) {
+
     try {
+
       const parsedUrl = new URL(enteredImageUrl);
-      if (parsedUrl.protocol !== "https:") throw new Error("HTTPS required");
+
+      if (parsedUrl.protocol !== "https:") {
+        throw new Error("HTTPS required");
+      }
+
     } catch {
+
       toast("Please enter a valid image URL beginning with https://");
+
       return;
+
     }
+
     product.imageUrl = enteredImageUrl;
+
   }
 
 
@@ -2071,10 +2774,30 @@ $("#productForm").addEventListener("submit", async e => {
     product.price < 0
   ) {
 
-    toast("Enter a valid product name and price.");
+    toast("Enter a valid product name and selling price.");
 
     return;
 
+  }
+
+
+  if (
+    originalPrice !== null &&
+    (
+      !Number.isFinite(originalPrice) ||
+      originalPrice <= sellingPrice
+    )
+  ) {
+
+    toast("Original price must be higher than selling price.");
+
+    return;
+
+  }
+
+
+  if (originalPrice !== null) {
+    product.originalPrice = originalPrice;
   }
 
 
@@ -2096,7 +2819,6 @@ $("#productForm").addEventListener("submit", async e => {
   const submitButton = form.querySelector(
     'button[type="submit"]'
   );
-
 
   submitButton.disabled = true;
 
@@ -2122,7 +2844,6 @@ $("#productForm").addEventListener("submit", async e => {
 
       uploadedImageRef = ref(storage, imagePath);
 
-
       await uploadBytes(
         uploadedImageRef,
         imageFile,
@@ -2130,7 +2851,6 @@ $("#productForm").addEventListener("submit", async e => {
           contentType: imageFile.type
         }
       );
-
 
       product.imageUrl = await getDownloadURL(
         uploadedImageRef
@@ -2148,24 +2868,24 @@ $("#productForm").addEventListener("submit", async e => {
 
 
     form.reset();
-    if (imageUrlInput) imageUrlInput.value = "";
+
+    if (imageUrlInput) {
+      imageUrlInput.value = "";
+    }
 
     productImagePreview.innerHTML = "";
 
     productImagePreview.classList.add("hidden");
 
-
     if (previewObjectUrl) {
-
       URL.revokeObjectURL(previewObjectUrl);
-
     }
 
     previewObjectUrl = null;
 
+    updateDiscountPreview();
 
     toast("Product added for all devices!");
-
 
   } catch (error) {
 
@@ -2173,7 +2893,6 @@ $("#productForm").addEventListener("submit", async e => {
       "Product add/upload error:",
       error
     );
-
 
     if (uploadedImageRef) {
 
@@ -2188,7 +2907,6 @@ $("#productForm").addEventListener("submit", async e => {
       }
 
     }
-
 
     if (error.code === "storage/unauthorized") {
 
@@ -2224,9 +2942,7 @@ $("#settingsForm").addEventListener("submit", async e => {
 
   e.preventDefault();
 
-
   const user = auth.currentUser;
-
 
   if (!user || user.uid !== ADMIN_UID) {
 
@@ -2236,11 +2952,9 @@ $("#settingsForm").addEventListener("submit", async e => {
 
   }
 
-
   const n = String(
     new FormData(e.currentTarget).get("whatsapp") || ""
   ).replace(/\D/g, "");
-
 
   if (n.length < 10 || n.length > 15) {
 
@@ -2249,7 +2963,6 @@ $("#settingsForm").addEventListener("submit", async e => {
     return;
 
   }
-
 
   try {
 
@@ -2301,15 +3014,10 @@ $("#exportOrders").onclick = () => {
     ...orders.map(o => [
 
       o.id,
-
       o.date,
-
       o.name,
-
       o.customerEmail || "",
-
       o.phone,
-
       o.address,
 
       o.items.map(i =>
@@ -2317,21 +3025,13 @@ $("#exportOrders").onclick = () => {
       ).join("; "),
 
       o.subtotal ?? "",
-
       o.deliveryCharge ?? DELIVERY_CHARGE,
-
       o.extraCharges ?? 0,
-
       o.extraChargeReason || "",
-
       o.total,
-
       o.payment,
-
       o.customization || "",
-
       o.notes || "",
-
       o.status
 
     ])
