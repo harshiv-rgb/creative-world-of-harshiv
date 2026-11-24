@@ -150,12 +150,18 @@
           <b id="checkoutSubtotal">₹0</b>
         </div>
 
+        <div class="price-summary-row">
+          <span>Delivery charge</span>
+          <b id="checkoutDelivery">Included</b>
+        </div>
+
         <div class="price-summary-row final-price">
           <span>Final total</span>
           <b id="checkoutTotal">₹0</b>
         </div>
 
       </div>
+
 
       <!-- CUSTOMIZATION FEATURE -->
 
@@ -180,12 +186,12 @@
         <button
           type="button"
           class="customize-btn"
-          id="customizeToggle"
+          id="customizationBtn"
         >
           ✨ Customize Your Product
         </button>
 
-        <div id="customizationPanel" class="hidden">
+        <div id="customizationSection" class="hidden">
 
           <label for="customizationText">
             Describe your customization requirements
@@ -198,48 +204,81 @@
             placeholder="Example: I want this product in blue colour with the name Harsh written on it..."
           ></textarea>
 
-          <button
-            type="button"
-            class="primary-btn wide"
-            id="saveCustomization"
-          >
-            Save Customization
-          </button>
+          <div class="customization-actions">
+
+            <button
+              type="button"
+              class="primary-btn wide"
+              id="saveCustomization"
+            >
+              Save Customization
+            </button>
+
+            <button
+              type="button"
+              class="secondary-btn"
+              id="clearCustomization"
+            >
+              Clear
+            </button>
+
+          </div>
 
         </div>
 
         <div
-          id="customizationSaved"
+          id="customizationDisplay"
           class="customization-saved hidden"
-        >
-          ✅ Customization saved successfully!
-        </div>
+        ></div>
 
       </div>
+
 
       <!-- CUSTOMIZATION CHARGES NOTICE -->
 
       <p class="tiny muted">
-        Extra charges for over customization.(to see the extra charges, go in My Account tab to see your order details after one day of ordering)
+        Extra charges for over customization. To see any extra
+        charges, go to the My Account tab and check your order
+        details after one day of ordering.
       </p>
 
-      <!-- ONLINE PAYMENT ONLY -->
+
+      <!-- ONLINE PAYMENT -->
 
       <div class="payment-choice">
+
         <b>Online payment only — Google Pay (UPI)</b>
 
         <div id="gpayInstructions" class="gpay-instructions">
+
           <b>Pay using Google Pay</b>
-          <p>Open Google Pay, search for this mobile number and complete the payment:</p>
+
+          <p>
+            Open Google Pay, search for this mobile number
+            and complete the payment:
+          </p>
 
           <div class="gpay-number-row">
             <strong id="gpayNumber">8558888095</strong>
-            <button type="button" class="secondary-btn" id="copyGpayNumber">Copy number</button>
+
+            <button
+              type="button"
+              class="secondary-btn"
+              id="copyGpayNumber"
+            >
+              Copy number
+            </button>
           </div>
 
-          <small>Use Google Pay's mobile-number/contact payment option. Do not pay if Google Pay cannot find the recipient.</small>
+          <small>
+            Use Google Pay's mobile-number/contact payment option.
+            Do not pay if Google Pay cannot find the recipient.
+          </small>
 
-          <label for="upiTransactionId">UPI transaction ID / UTR</label>
+          <label for="upiTransactionId">
+            UPI transaction ID / UTR
+          </label>
+
           <input
             id="upiTransactionId"
             name="upiTransactionId"
@@ -250,21 +289,32 @@
           >
 
           <small>
-            Where can I find my UTR number? Open Google Pay → Go to transaction history → Select the payment you made → Open the transaction details → Find the UPI transaction ID (UTR).
+            Where can I find my UTR number? Open Google Pay →
+            Go to transaction history → Select the payment you made →
+            Open the transaction details → Find the UPI transaction ID (UTR).
           </small>
 
           <small>
-            Your order will remain Pending Verification until the shop checks the bank transaction. Entering a reference number does not itself confirm payment.
+            Your order will remain Pending Verification until the shop
+            checks the bank transaction. Entering a reference number
+            does not itself confirm payment.
           </small>
+
         </div>
+
       </div>
 
-      <button class="primary-btn wide" id="placeOrderButton" type="submit">
+      <button
+        class="primary-btn wide"
+        id="placeOrderButton"
+        type="submit"
+      >
         Place Online Payment Order
       </button>
 
       <p class="tiny muted">
-        WhatsApp will open with your order details. Please press Send in WhatsApp to notify the shop.
+        WhatsApp will open with your order details.
+        Please press Send in WhatsApp to notify the shop.
       </p>
 
     </form>
@@ -282,10 +332,11 @@
 
   <h1 class="page-title">My Account & Orders</h1>
 
-  <div id="customerSignedOut">
+  <div id="customerLogin">
 
     <p class="muted">
-      Create an account or sign in to place orders and view your order history.
+      Create an account or sign in to place orders
+      and view your order history.
     </p>
 
     <div class="customer-auth-grid">
@@ -298,12 +349,22 @@
 
           <label>
             Email address
-            <input name="email" type="email" autocomplete="email" required>
+            <input
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+            >
           </label>
 
           <label>
             Password
-            <input name="password" type="password" autocomplete="current-password" required>
+            <input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            >
           </label>
 
           <button class="primary-btn wide" type="submit">
@@ -314,6 +375,7 @@
 
       </div>
 
+
       <div class="panel">
 
         <h2>Create an account</h2>
@@ -322,12 +384,23 @@
 
           <label>
             Email address
-            <input name="email" type="email" autocomplete="email" required>
+            <input
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+            >
           </label>
 
           <label>
             Create password
-            <input name="password" type="password" minlength="6" autocomplete="new-password" required>
+            <input
+              name="password"
+              type="password"
+              minlength="6"
+              autocomplete="new-password"
+              required
+            >
           </label>
 
           <small class="tiny muted">
@@ -346,13 +419,20 @@
 
   </div>
 
-  <div id="customerSignedIn" class="hidden">
+
+  <div id="customerAccount" class="hidden">
 
     <div class="panel">
 
-      <p>Signed in as <b id="customerEmail"></b></p>
+      <p>
+        Signed in as <b id="customerEmail"></b>
+      </p>
 
-      <button class="secondary-btn" id="customerLogoutBtn" type="button">
+      <button
+        class="secondary-btn"
+        id="customerLogoutBtn"
+        type="button"
+      >
         Sign out
       </button>
 
@@ -360,7 +440,7 @@
 
     <h2>Your orders</h2>
 
-    <div id="customerOrdersList">
+    <div id="customerOrders">
       <p class="muted">Loading your orders...</p>
     </div>
 
@@ -376,6 +456,7 @@
   <p class="eyebrow">STORE MANAGEMENT</p>
 
   <h1 class="page-title">Admin dashboard</h1>
+
 
   <!-- ADMIN LOGIN -->
 
@@ -428,31 +509,46 @@
 
     <div class="admin-actions">
 
-      <button class="secondary-btn" id="exportOrders">
+      <button
+        class="secondary-btn"
+        id="exportOrdersBtn"
+        type="button"
+      >
         Export orders (CSV)
       </button>
 
-      <button class="secondary-btn" id="logoutBtn">
+      <button
+        class="secondary-btn"
+        id="logoutBtn"
+        type="button"
+      >
         Log out
       </button>
 
     </div>
+
 
     <!-- STATISTICS -->
 
     <div class="stats">
 
       <div class="stat">
-        <b id="orderTotal">0</b>
-        <span>Orders on this device</span>
+        <b id="adminTotalOrders">0</b>
+        <span>Total orders</span>
       </div>
 
       <div class="stat">
-        <b id="productTotal">0</b>
-        <span>Products</span>
+        <b id="adminPendingOrders">0</b>
+        <span>Pending orders</span>
+      </div>
+
+      <div class="stat">
+        <b id="adminRevenue">₹0</b>
+        <span>Paid revenue</span>
       </div>
 
     </div>
+
 
     <!-- ORDERS -->
 
@@ -462,11 +558,14 @@
 
       <p class="tiny muted">
         Customer orders are synchronized through Firebase.
+        Check payment references and verify payments before marking
+        orders as paid.
       </p>
 
-      <div id="ordersList"></div>
+      <div id="adminOrders"></div>
 
     </div>
+
 
     <!-- MANAGE PRODUCTS -->
 
@@ -475,15 +574,20 @@
       <h2>Manage products</h2>
 
       <p class="tiny muted">
-        Add a product photo from your device. Images are shared
-        with customers on all devices.
+        Add products with their original price and discounted
+        selling price. The discount percentage is calculated
+        automatically.
       </p>
 
-      <form id="productForm" class="product-form">
+      <form id="addProductForm" class="product-form">
 
         <label>
           Product name
-          <input name="name" required maxlength="70">
+          <input
+            name="name"
+            required
+            maxlength="70"
+          >
         </label>
 
         <label>
@@ -508,40 +612,22 @@
           >
         </label>
 
-        <div class="discount-preview-box">
-          <span>Discount preview</span>
-          <strong id="discountPreview">No discount</strong>
-        </div>
-
         <label>
           Short description
-          <input name="description" maxlength="140">
+          <input
+            name="description"
+            maxlength="140"
+          >
         </label>
 
         <label>
           Symbol / emoji
-          <input name="symbol" maxlength="4" value="🎁">
-        </label>
-
-        <label class="image-upload-label">
-          Product picture (optional)
-
           <input
-            id="productImage"
-            name="productImage"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            name="symbol"
+            maxlength="4"
+            value="🎁"
           >
-
-          <small class="tiny muted">
-            JPG, PNG, WEBP or GIF · Maximum 5 MB
-          </small>
         </label>
-
-        <div
-          id="productImagePreview"
-          class="image-preview hidden"
-        ></div>
 
         <button class="primary-btn" type="submit">
           Add product
@@ -553,6 +639,7 @@
 
     </div>
 
+
     <!-- WHATSAPP SETTINGS -->
 
     <div class="panel">
@@ -562,8 +649,8 @@
       <p class="tiny muted">
         Enter the shop's WhatsApp number with country code,
         digits only. For India, start with 91.
-        This number is saved securely in Firebase and shared
-        across all devices. Only the authorized admin can change it.
+        This number is saved in Firebase and shared across
+        all devices. Only the authorized admin can change it.
       </p>
 
       <form id="settingsForm">
@@ -603,13 +690,18 @@
     Great things are done by a series of small things brought together.
   </p>
 
-  <small>Online UPI payments • Manual payment verification</small>
+  <small>
+    Online UPI payments • Manual payment verification
+  </small>
 
   <div class="footer-support">
+
     <span>Need help? Contact us:</span>
+
     <a href="mailto:harshivnadya@gmail.com">
       harshivnadya@gmail.com
     </a>
+
   </div>
 
 </footer>
