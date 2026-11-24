@@ -86,6 +86,7 @@
 <section id="cartView" class="view hidden section">
 
   <p class="eyebrow">YOUR SELECTION</p>
+
   <h1 class="page-title">Shopping cart</h1>
 
   <div id="cartContents"></div>
@@ -98,29 +99,50 @@
 
       <label>
         Customer name
-        <input name="customerName" required maxlength="80" autocomplete="name">
+        <input
+          name="customerName"
+          required
+          maxlength="80"
+          autocomplete="name"
+        >
       </label>
 
       <label>
         Mobile number
-        <input name="phone" required inputmode="tel"
-          pattern="[0-9+() -]{8,18}" maxlength="18" autocomplete="tel">
+        <input
+          name="phone"
+          required
+          inputmode="tel"
+          pattern="[0-9+() -]{8,18}"
+          maxlength="18"
+          autocomplete="tel"
+        >
       </label>
 
       <label>
         Full delivery address
-        <textarea name="address" required maxlength="400"
-          rows="3" autocomplete="street-address"></textarea>
+        <textarea
+          name="address"
+          required
+          maxlength="400"
+          rows="3"
+          autocomplete="street-address"
+        ></textarea>
       </label>
 
       <label>
         Extra instructions (optional)
-        <textarea name="notes" maxlength="300" rows="2"></textarea>
+        <textarea
+          name="notes"
+          maxlength="300"
+          rows="2"
+        ></textarea>
       </label>
 
       <!-- PRICE BREAKDOWN -->
 
       <div class="price-summary" id="checkoutPriceSummary">
+
         <h3>Order price details</h3>
 
         <div class="price-summary-row">
@@ -128,27 +150,26 @@
           <b id="checkoutSubtotal">₹0</b>
         </div>
 
-        <div class="price-summary-row">
-          <span>Delivery charges</span>
-          <b id="checkoutDelivery">₹30</b>
-        </div>
-
         <div class="price-summary-row final-price">
           <span>Final total</span>
-          <b id="checkoutTotal">₹30</b>
+          <b id="checkoutTotal">₹0</b>
         </div>
+
       </div>
 
-      <!-- CUSTOMIZATION -->
+      <!-- CUSTOMIZATION FEATURE -->
 
       <div class="customization-box">
 
         <div class="customization-heading">
+
           <div>
             <span class="customization-icon">✨</span>
             <b>Customize Your Product</b>
           </div>
+
           <span class="optional-label">Optional</span>
+
         </div>
 
         <p>
@@ -156,11 +177,15 @@
           your product to be customized!
         </p>
 
-        <button type="button" class="customize-btn" id="customizationBtn">
+        <button
+          type="button"
+          class="customize-btn"
+          id="customizeToggle"
+        >
           ✨ Customize Your Product
         </button>
 
-        <div id="customizationSection" class="hidden">
+        <div id="customizationPanel" class="hidden">
 
           <label for="customizationText">
             Describe your customization requirements
@@ -173,94 +198,73 @@
             placeholder="Example: I want this product in blue colour with the name Harsh written on it..."
           ></textarea>
 
-          <button type="button" class="primary-btn wide" id="saveCustomization">
+          <button
+            type="button"
+            class="primary-btn wide"
+            id="saveCustomization"
+          >
             Save Customization
-          </button>
-
-          <button type="button" class="secondary-btn wide" id="clearCustomization">
-            Clear Customization
           </button>
 
         </div>
 
-        <div id="customizationDisplay" class="customization-saved hidden">
-          Customization saved.
+        <div
+          id="customizationSaved"
+          class="customization-saved hidden"
+        >
+          ✅ Customization saved successfully!
         </div>
 
       </div>
 
+      <!-- CUSTOMIZATION CHARGES NOTICE -->
+
       <p class="tiny muted">
-        Extra charges for over customization. To see the extra charges,
-        go to the My Account tab and check your order details after one day.
+        Extra charges for over customization.(to see the extra charges, go in My Account tab to see your order details after one day of ordering)
       </p>
 
-      <!-- PAYMENT METHOD -->
+      <!-- ONLINE PAYMENT ONLY -->
 
       <div class="payment-choice">
+        <b>Online payment only — Google Pay (UPI)</b>
 
-        <b>Payment method</b>
-
-        <label class="payment-option">
-          <input type="radio" name="paymentMethod"
-            value="Cash on Delivery" checked>
-          <span>Cash on Delivery (COD)</span>
-        </label>
-
-        <label class="payment-option">
-          <input type="radio" name="paymentMethod" value="Google Pay">
-          <span>Google Pay (UPI)</span>
-        </label>
-
-        <div id="gpayInstructions" class="gpay-instructions hidden">
+        <div id="gpayInstructions" class="gpay-instructions">
           <b>Pay using Google Pay</b>
-
-          <p>
-            Open Google Pay, search for this mobile number and complete
-            the payment:
-          </p>
+          <p>Open Google Pay, search for this mobile number and complete the payment:</p>
 
           <div class="gpay-number-row">
             <strong id="gpayNumber">8558888095</strong>
-            <button type="button" class="secondary-btn" id="copyGpayNumber">
-              Copy number
-            </button>
+            <button type="button" class="secondary-btn" id="copyGpayNumber">Copy number</button>
           </div>
 
-          <small>
-            Do not pay if Google Pay cannot find the correct recipient.
-          </small>
+          <small>Use Google Pay's mobile-number/contact payment option. Do not pay if Google Pay cannot find the recipient.</small>
 
-          <label for="upiTransactionId">
-            UPI transaction ID / UTR
-          </label>
-
+          <label for="upiTransactionId">UPI transaction ID / UTR</label>
           <input
             id="upiTransactionId"
             name="upiTransactionId"
             maxlength="50"
+            minlength="6"
+            required
             placeholder="Enter the transaction reference after paying"
           >
 
           <small>
-            Your payment will remain Pending Verification until the shop
-            checks the transaction. Entering a reference number does not
-            itself confirm payment.
+            Where can I find my UTR number? Open Google Pay → Go to transaction history → Select the payment you made → Open the transaction details → Find the UPI transaction ID (UTR).
+          </small>
+
+          <small>
+            Your order will remain Pending Verification until the shop checks the bank transaction. Entering a reference number does not itself confirm payment.
           </small>
         </div>
-
-        <small id="codInstructions">
-          Pay in cash when your order is delivered.
-        </small>
-
       </div>
 
       <button class="primary-btn wide" id="placeOrderButton" type="submit">
-        Place COD order via WhatsApp
+        Place Online Payment Order
       </button>
 
       <p class="tiny muted">
-        WhatsApp will open with your order details. Please press Send
-        in WhatsApp to notify the shop.
+        WhatsApp will open with your order details. Please press Send in WhatsApp to notify the shop.
       </p>
 
     </form>
@@ -270,14 +274,15 @@
 </section>
 
 
-<!-- CUSTOMER ACCOUNT -->
+<!-- CUSTOMER ACCOUNT AND ORDER HISTORY -->
 
 <section id="accountView" class="view hidden section">
 
   <p class="eyebrow">CUSTOMER ACCOUNT</p>
+
   <h1 class="page-title">My Account & Orders</h1>
 
-  <div id="customerLogin">
+  <div id="customerSignedOut">
 
     <p class="muted">
       Create an account or sign in to place orders and view your order history.
@@ -286,6 +291,7 @@
     <div class="customer-auth-grid">
 
       <div class="panel">
+
         <h2>Customer sign in</h2>
 
         <form id="customerLoginForm">
@@ -297,8 +303,7 @@
 
           <label>
             Password
-            <input name="password" type="password"
-              autocomplete="current-password" required>
+            <input name="password" type="password" autocomplete="current-password" required>
           </label>
 
           <button class="primary-btn wide" type="submit">
@@ -306,9 +311,11 @@
           </button>
 
         </form>
+
       </div>
 
       <div class="panel">
+
         <h2>Create an account</h2>
 
         <form id="customerRegisterForm">
@@ -320,8 +327,7 @@
 
           <label>
             Create password
-            <input name="password" type="password" minlength="6"
-              autocomplete="new-password" required>
+            <input name="password" type="password" minlength="6" autocomplete="new-password" required>
           </label>
 
           <small class="tiny muted">
@@ -333,25 +339,28 @@
           </button>
 
         </form>
+
       </div>
 
     </div>
 
   </div>
 
-  <div id="customerAccount" class="hidden">
+  <div id="customerSignedIn" class="hidden">
 
     <div class="panel">
+
       <p>Signed in as <b id="customerEmail"></b></p>
 
       <button class="secondary-btn" id="customerLogoutBtn" type="button">
         Sign out
       </button>
+
     </div>
 
     <h2>Your orders</h2>
 
-    <div id="customerOrders">
+    <div id="customerOrdersList">
       <p class="muted">Loading your orders...</p>
     </div>
 
@@ -365,6 +374,7 @@
 <section id="adminView" class="view hidden section">
 
   <p class="eyebrow">STORE MANAGEMENT</p>
+
   <h1 class="page-title">Admin dashboard</h1>
 
   <!-- ADMIN LOGIN -->
@@ -381,13 +391,22 @@
 
       <label>
         Admin email
-        <input name="email" type="email" autocomplete="username" required>
+        <input
+          name="email"
+          type="email"
+          autocomplete="username"
+          required
+        >
       </label>
 
       <label>
         Password
-        <input name="password" type="password"
-          autocomplete="current-password" required>
+        <input
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
       </label>
 
       <button class="primary-btn wide" type="submit">
@@ -403,13 +422,13 @@
   </div>
 
 
-  <!-- ADMIN DASHBOARD -->
+  <!-- ADMIN DASHBOARD CONTENT -->
 
   <div id="adminPanel" class="hidden">
 
     <div class="admin-actions">
 
-      <button class="secondary-btn" id="exportOrdersBtn">
+      <button class="secondary-btn" id="exportOrders">
         Export orders (CSV)
       </button>
 
@@ -424,18 +443,13 @@
     <div class="stats">
 
       <div class="stat">
-        <b id="adminTotalOrders">0</b>
-        <span>Total orders</span>
+        <b id="orderTotal">0</b>
+        <span>Orders on this device</span>
       </div>
 
       <div class="stat">
-        <b id="adminPendingOrders">0</b>
-        <span>Pending orders</span>
-      </div>
-
-      <div class="stat">
-        <b id="adminRevenue">₹0</b>
-        <span>Revenue</span>
+        <b id="productTotal">0</b>
+        <span>Products</span>
       </div>
 
     </div>
@@ -443,16 +457,18 @@
     <!-- ORDERS -->
 
     <div class="panel">
+
       <h2>Orders</h2>
 
       <p class="tiny muted">
         Customer orders are synchronized through Firebase.
       </p>
 
-      <div id="adminOrders"></div>
+      <div id="ordersList"></div>
+
     </div>
 
-    <!-- PRODUCTS -->
+    <!-- MANAGE PRODUCTS -->
 
     <div class="panel">
 
@@ -463,7 +479,7 @@
         with customers on all devices.
       </p>
 
-      <form id="addProductForm" class="product-form">
+      <form id="productForm" class="product-form">
 
         <label>
           Product name
@@ -472,14 +488,30 @@
 
         <label>
           Original / cut price (₹)
-          <input name="originalPrice" type="number"
-            min="0" step="1" placeholder="Optional">
+          <input
+            name="originalPrice"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Optional"
+          >
         </label>
 
         <label>
           Discounted selling price (₹)
-          <input name="price" type="number" min="0" step="1" required>
+          <input
+            name="price"
+            type="number"
+            min="0"
+            step="1"
+            required
+          >
         </label>
+
+        <div class="discount-preview-box">
+          <span>Discount preview</span>
+          <strong id="discountPreview">No discount</strong>
+        </div>
 
         <label>
           Short description
@@ -506,12 +538,10 @@
           </small>
         </label>
 
-        <div id="productImagePreview" class="image-preview hidden"></div>
-
-        <div class="discount-preview-box">
-          <span>Discount preview</span>
-          <strong id="discountPreview">No discount</strong>
-        </div>
+        <div
+          id="productImagePreview"
+          class="image-preview hidden"
+        ></div>
 
         <button class="primary-btn" type="submit">
           Add product
@@ -532,15 +562,20 @@
       <p class="tiny muted">
         Enter the shop's WhatsApp number with country code,
         digits only. For India, start with 91.
-        This number is saved in Firebase and shared across devices.
+        This number is saved securely in Firebase and shared
+        across all devices. Only the authorized admin can change it.
       </p>
 
       <form id="settingsForm">
 
         <label>
           WhatsApp number
-          <input name="whatsapp" inputmode="numeric"
-            placeholder="91XXXXXXXXXX" required>
+          <input
+            name="whatsapp"
+            inputmode="numeric"
+            placeholder="91XXXXXXXXXX"
+            required
+          >
         </label>
 
         <button class="primary-btn" type="submit">
@@ -568,9 +603,7 @@
     Great things are done by a series of small things brought together.
   </p>
 
-  <small>
-    Independent shop demo • COD and Google Pay (manual UPI verification)
-  </small>
+  <small>Online UPI payments • Manual payment verification</small>
 
   <div class="footer-support">
     <span>Need help? Contact us:</span>
