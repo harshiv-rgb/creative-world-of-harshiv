@@ -231,25 +231,42 @@
       <!-- PAYMENT METHOD -->
 
       <div class="payment-choice">
-
         <b>Payment method</b>
 
-        <span>Cash on Delivery (COD) — only option</span>
+        <label class="payment-option">
+          <input type="radio" name="paymentMethod" value="Cash on Delivery" checked>
+          <span>Cash on Delivery (COD)</span>
+        </label>
 
-        <small>
+        <label class="payment-option">
+          <input type="radio" name="paymentMethod" value="Google Pay">
+          <span>Google Pay (UPI)</span>
+        </label>
+
+        <div id="gpayInstructions" class="gpay-instructions hidden">
+          <b>Pay using Google Pay</b>
+          <p>Open Google Pay, search for this mobile number and complete the payment:</p>
+          <div class="gpay-number-row">
+            <strong id="gpayNumber">8558888095</strong>
+            <button type="button" class="secondary-btn" id="copyGpayNumber">Copy number</button>
+          </div>
+          <small>Use Google Pay's mobile-number/contact payment option. This number must be discoverable for UPI payments. Do not pay if Google Pay cannot find the recipient.</small>
+          <label for="upiTransactionId">UPI transaction ID / UTR</label>
+          <input id="upiTransactionId" name="upiTransactionId" maxlength="50" placeholder="Enter the transaction reference after paying">
+          <small>Your payment will remain Pending Verification until the shop checks the bank transaction. Entering a reference number does not itself confirm payment.</small>
+        </div>
+
+        <small id="codInstructions">
           Pay in cash when your order is delivered.
         </small>
-
       </div>
 
-      <button class="primary-btn wide" type="submit">
+      <button class="primary-btn wide" id="placeOrderButton" type="submit">
         Place COD order via WhatsApp
       </button>
 
       <p class="tiny muted">
-        When you place the order, WhatsApp will open with your
-        order details. Please press Send in WhatsApp to notify
-        the shop.
+        WhatsApp will open with your order details. Please press Send in WhatsApp to notify the shop.
       </p>
 
     </form>
@@ -588,7 +605,7 @@
     Great things are done by a series of small things brought together.
   </p>
 
-  <small>Independent shop demo • COD only</small>
+  <small>Independent shop demo • COD and Google Pay (manual UPI verification)</small>
 
   <div class="footer-support">
     <span>Need help? Contact us:</span>
