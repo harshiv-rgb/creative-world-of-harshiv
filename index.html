@@ -247,59 +247,12 @@
 
       <div class="payment-choice">
 
-        <b>Online payment only — Google Pay (UPI)</b>
+        <b>Online payment only — UPI</b>
 
         <div id="gpayInstructions" class="gpay-instructions">
-
-          <b>Pay using Google Pay</b>
-
-          <p>
-            Open Google Pay, search for this mobile number
-            and complete the payment:
-          </p>
-
-          <div class="gpay-number-row">
-            <strong id="gpayNumber">8558888095</strong>
-
-            <button
-              type="button"
-              class="secondary-btn"
-              id="copyGpayNumber"
-            >
-              Copy number
-            </button>
-          </div>
-
-          <small>
-            Use Google Pay's mobile-number/contact payment option.
-            Do not pay if Google Pay cannot find the recipient.
-          </small>
-
-          <label for="upiTransactionId">
-            UPI transaction ID / UTR
-          </label>
-
-          <input
-            id="upiTransactionId"
-            name="upiTransactionId"
-            maxlength="50"
-            minlength="6"
-            required
-            placeholder="Enter the transaction reference after paying"
-          >
-
-          <small>
-            Where can I find my UTR number? Open Google Pay →
-            Go to transaction history → Select the payment you made →
-            Open the transaction details → Find the UPI transaction ID (UTR).
-          </small>
-
-          <small>
-            Your order will remain Pending Verification until the shop
-            checks the bank transaction. Entering a reference number
-            does not itself confirm payment.
-          </small>
-
+          <b>Pay using UPI</b>
+          <p>Press Pay Now to open your UPI app chooser with the shop UPI ID and exact amount prefilled.</p>
+          <p class="tiny muted">Payment will be manually verified by the shop before order confirmation.</p>
         </div>
 
       </div>
@@ -309,12 +262,12 @@
         id="placeOrderButton"
         type="submit"
       >
-        Place Online Payment Order
+        Pay Now
       </button>
 
       <p class="tiny muted">
-        WhatsApp will open with your order details.
-        Please press Send in WhatsApp to notify the shop.
+        First complete the UPI payment. After the shop verifies it,
+        confirm your order from My Account to open WhatsApp.
       </p>
 
     </form>
