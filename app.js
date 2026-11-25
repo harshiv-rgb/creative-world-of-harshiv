@@ -67,7 +67,7 @@ const ALLOWED_IMAGE_TYPES = [
 
 /* GOOGLE PAY SETTINGS */
 
-const GPAY_NUMBER = "8558888095";
+const UPI_ID = "varunshilpa90@okhdfcbank";
 
 
 /* DEFAULT PRODUCTS */
@@ -549,6 +549,7 @@ function renderProducts() {
         <div class="product-info">
           <h3>${escapeHtml(p.name)}</h3>
           <p>${escapeHtml(p.description || "Handmade creation.")}</p>
+          <p class="delivery-included-note">Price includes delivery charges.</p>
           ${getProductPriceHTML(p)}
           <span class="view-details-label">
             View product details →
@@ -729,283 +730,72 @@ $("#clearCustomization")?.addEventListener("click", () => {
 updateCustomizationDisplay();
 
 
-/* GOOGLE PAY PAYMENT INSTRUCTIONS */
-
-function getSelectedPaymentMethod() {
-  return "Google Pay";
-}
-
-
+/* UPI PAYMENT INSTRUCTIONS */
 function updatePaymentInstructions() {
-  const instructions = $("#gpayInstructions");
-  if (!instructions) return;
-
-  instructions.classList.remove("hidden");
-
-  instructions.innerHTML = `
+  const box = $("#gpayInstructions");
+  if (!box) return;
+  box.classList.remove("hidden");
+  box.innerHTML = `
     <div class="gpay-payment-box">
-      <h3>Pay using Google Pay</h3>
-
-      <p>
-        Open Google Pay and search for this mobile number:
-      </p>
-
-      <h2 class="gpay-number">${GPAY_NUMBER}</h2>
-
-      <button
-        type="button"
-        id="copyGpayNumber"
-        class="secondary-btn"
-      >
-        Copy number
-      </button>
-
-      <p class="payment-warning">
-        Make sure the correct recipient is displayed before paying.
-        If this number is not available in Google Pay, contact the
-        shop before making payment.
-      </p>
-
-      <div class="upi-help">
-        <h4>Where can you find your UTR?</h4>
-
-        <ol>
-          <li>Open Google Pay.</li>
-          <li>Open your transaction history.</li>
-          <li>Select the payment you made to the shop.</li>
-          <li>Find the UPI transaction ID or UTR in the details.</li>
-          <li>Copy that reference and enter it below.</li>
-        </ol>
-      </div>
-
-      <label for="upiTransactionId">
-        UPI transaction reference / UTR
-      </label>
-
-      <input
-        type="text"
-        id="upiTransactionId"
-        name="upiTransactionId"
-        placeholder="Enter your transaction reference"
-        autocomplete="off"
-      >
-
-      <p class="tiny muted">
-        Your order will remain pending until the shop administrator
-        manually verifies your payment.
-      </p>
-    </div>
-  `;
-
+      <h3>Pay using UPI</h3>
+      <p>Press <b>Pay Now</b> to open your UPI app chooser with the shop UPI ID and exact amount prefilled.</p>
+      <div class="gpay-number-row"><strong class="gpay-number">${UPI_ID}</strong><button type="button" id="copyGpayNumber" class="secondary-btn">Copy UPI ID</button></div>
+      <p class="payment-warning">Before approving, verify that the recipient shown in your UPI app is exactly this UPI ID.</p>
+      <p class="tiny muted">Your payment request is saved first as Pending Verification. The shop administrator will check the actual bank/UPI receipt and mark it Paid. Only then will the Confirm Order & Send WhatsApp button appear in My Account.</p>
+      <p class="tiny muted">UPI apps do not automatically send payment confirmation to this website. A reference number or screenshot alone does not verify payment.</p>
+    </div>`;
   $("#copyGpayNumber")?.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(GPAY_NUMBER);
-      toast("Google Pay number copied!");
-    } catch (error) {
-      console.error("Copy number error:", error);
-      toast("Please copy the number manually: " + GPAY_NUMBER);
-    }
+    try { await navigator.clipboard.writeText(UPI_ID); toast("Shop UPI ID copied."); }
+    catch { toast("Shop UPI ID: " + UPI_ID); }
   });
 }
-
-
-updatePaymentInstructions();/* CHECKOUT AND SAVE ORDER */
+updatePaymentInstructions();
 
 function getCheckoutValue(name) {
   const form = $("#checkoutForm");
-  if (!form) return "";
-
-  const field = form.elements.namedItem(name);
+  const field = form?.elements.namedItem(name);
   return field ? String(field.value || "").trim() : "";
 }
-
-
-function getWhatsAppNumber() {
-  return String(settings.whatsapp || "").replace(/\D/g, "");
-}
-
-
+function getWhatsAppNumber() { return String(settings.whatsapp || "").replace(/\D/g, ""); }
 function createWhatsAppMessage(order) {
-  const lines = order.items.map(item => {
-    return `${item.name} x ${item.qty} = ${money(
-      Number(item.price) * Number(item.qty)
-    )}`;
-  });
-
+  const lines = (order.items || []).map(item => `${item.name} x ${item.qty} = ${money(Number(item.price) * Number(item.qty))}`);
   return [
-    "NEW ORDER — THE CREATIVE WORLD OF HARSHIV",
-    "",
-    `Order ID: ${order.id}`,
-    `Customer: ${order.name}`,
-    `Phone: ${order.phone}`,
-    `Address: ${order.address}`,
-    "",
-    "PRODUCTS:",
-    ...lines,
-    "",
-    `Product subtotal: ${money(order.subtotal)}`,
-    "Delivery charge: Included",
-    `Extra charges: ${money(order.extraCharges)}`,
-    `Total: ${money(order.total)}`,
-    "",
-    `Payment method: ${order.payment}`,
-    `Payment status: ${order.paymentStatus}`,
-    order.upiTransactionId
-      ? `UPI transaction reference: ${order.upiTransactionId}`
-      : "",
-    "",
-    `Customization: ${order.customization || "None"}`,
-    `Notes: ${order.notes || "None"}`,
-    "",
+    "CONFIRMED PAID ORDER — THE CREATIVE WORLD OF HARSHIV", "",
+    `Order ID: ${order.id}`, `Customer: ${order.name}`, `Phone: ${order.phone}`, `Address: ${order.address}`, "",
+    "PRODUCTS:", ...lines, "", `Product subtotal: ${money(order.subtotal)}`,
+    "Delivery charge: Included", `Extra charges: ${money(order.extraCharges)}`, `Total: ${money(order.total)}`, "",
+    `Payment method: ${order.payment}`, "Payment status: Paid (verified by shop)",
+    `Customization: ${order.customization || "None"}`, `Notes: ${order.notes || "None"}`, "",
     "Thank you for shopping with us!"
-  ].filter(Boolean).join("\n");
+  ].join("\n");
 }
 
-
+/* SAVE PENDING PAYMENT REQUEST, THEN OPEN UPI APP */
 $("#checkoutForm")?.addEventListener("submit", async e => {
   e.preventDefault();
-
-  if (!currentUser || currentUser.uid === ADMIN_UID) {
-    toast("Please sign in with your customer account first.");
-    show("account");
-    return;
-  }
-
-  if (!cart.length) {
-    toast("Your cart is empty.");
-    return;
-  }
-
-  if (!shopSettingsLoaded) {
-    toast("Please wait while shop settings load.");
-    return;
-  }
-
-  const name = getCheckoutValue("customerName");
-  const phone = getCheckoutValue("phone");
-  const address = getCheckoutValue("address");
-  const notes = getCheckoutValue("notes");
-
-  if (!name || !phone || !address) {
-    toast("Please fill in your name, phone number and address.");
-    return;
-  }
-
-  const payment = "Google Pay";
-  const upiTransactionId = getCheckoutValue("upiTransactionId");
-
-  if (!upiTransactionId) {
-    toast("Please enter your UPI transaction reference.");
-    return;
-  }
-
-  if (upiTransactionId.length < 6) {
-    toast("Please enter a valid transaction reference.");
-    return;
-  }
-
-  const whatsappNumber = getWhatsAppNumber();
-
-  if (!whatsappNumber) {
-    toast("Shop WhatsApp number is not configured.");
-    return;
-  }
-
-  const orderItems = cart.map(item => {
-    const product = products.find(p => p.id === item.id);
-    if (!product) return null;
-
-    return {
-      id: product.id,
-      name: product.name,
-      price: Number(product.price),
-      qty: Number(item.qty)
-    };
-  }).filter(Boolean);
-
-  if (!orderItems.length) {
-    toast("Your cart products are no longer available.");
-    return;
-  }
-
-  const subtotal = orderItems.reduce((sum, item) => {
-    return sum + item.price * item.qty;
-  }, 0);
-
-  const orderId = "CWH-" + Date.now();
-
-  const order = {
-    id: orderId,
-    customerUid: currentUser.uid,
-    customerEmail: currentUser.email || "",
-    date: new Date().toISOString(),
-    name,
-    phone,
-    address,
-    notes,
-    items: orderItems,
-    subtotal,
-    extraCharges: 0,
-    extraChargeReason: "",
-    total: subtotal,
-    customization,
-    payment,
-    paymentStatus: "Pending Verification",
-    upiTransactionId,
-    status: "Pending"
-  };
-
-  const submitButton = $("#checkoutForm button[type='submit']");
-
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = "Saving order...";
-  }
-
+  if (!currentUser || currentUser.uid === ADMIN_UID) { toast("Please sign in with your customer account first."); show("account"); return; }
+  if (!cart.length) { toast("Your cart is empty."); return; }
+  if (!shopSettingsLoaded) { toast("Please wait while shop settings load."); return; }
+  const name=getCheckoutValue("customerName"), phone=getCheckoutValue("phone"), address=getCheckoutValue("address"), notes=getCheckoutValue("notes");
+  if (!name || !phone || !address) { toast("Please fill in your name, phone number and address."); return; }
+  if (!getWhatsAppNumber()) { toast("Shop WhatsApp number is not configured."); return; }
+  const items=cart.map(item => { const p=products.find(x=>x.id===item.id); return p ? {id:p.id,name:p.name,price:Number(p.price),qty:Number(item.qty)} : null; }).filter(Boolean);
+  if (!items.length) { toast("Your cart products are no longer available."); return; }
+  const subtotal=items.reduce((sum,item)=>sum+item.price*item.qty,0);
+  if (!Number.isFinite(subtotal) || subtotal<=0) { toast("Please check your cart total."); return; }
+  const id="CWH-"+Date.now();
+  const order={id,customerUid:currentUser.uid,customerEmail:currentUser.email||"",date:new Date().toISOString(),name,phone,address,notes,items,subtotal,extraCharges:0,extraChargeReason:"",total:subtotal,customization:customizationSaved?customization:"",payment:"Google Pay / UPI",paymentStatus:"Pending Verification",upiTransactionId:"",status:"Payment Pending",orderConfirmed:false};
+  const button=$("#placeOrderButton") || $("#checkoutForm button[type='submit']");
+  if(button){button.disabled=true;button.textContent="Saving payment request...";}
   try {
-    await setDoc(
-      doc(db, "orders", order.id),
-      order
-    );
-
-    const message = createWhatsAppMessage(order);
-
-    const whatsappURL =
-      "https://wa.me/" +
-      whatsappNumber +
-      "?text=" +
-      encodeURIComponent(message);
-
-    cart = [];
-    save("cwh_cart", cart);
-
-    customization = "";
-    customizationSaved = false;
-
-    save("cwh_customization", "");
-
-    updateCount();
-    renderCart();
-    updateCustomizationDisplay();
-
-    toast("Order saved successfully!");
-
-    window.open(whatsappURL, "_blank");
-
-    $("#checkoutForm").reset();
-
-    updatePaymentInstructions();
-
-  } catch (error) {
-    console.error("Order saving error:", error);
-    toast("Order could not be saved. Please try again.");
-
-  } finally {
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = "Place Order";
-    }
-  }
+    await setDoc(doc(db,"orders",id),order);
+    const params=new URLSearchParams({pa:UPI_ID,pn:"The Creative World of Harshiv",am:subtotal.toFixed(2),cu:"INR",tn:`Order ${id}`,tr:id});
+    toast("Payment request saved. Opening your UPI app...");
+    window.location.href=`upi://pay?${params.toString()}`;
+  } catch(error) {
+    console.error("Payment request error:",error);
+    toast("Payment request could not be saved. Please try again.");
+  } finally { if(button){button.disabled=false;button.textContent="Pay Now";} }
 });
 
 
@@ -1127,6 +917,10 @@ function renderCustomerAccount() {
             </p>
           ` : ""}
         </div>
+        ${paymentStatus === "Paid" && !o.orderConfirmed ? `
+          <div class="request-box"><b>Payment verified!</b><p class="tiny">Confirm your order to send its details to the shop on WhatsApp.</p><button type="button" class="primary-btn wide" data-confirm-paid-order="${escapeHtml(o.id)}">Confirm Order & Send WhatsApp</button></div>
+        ` : ""}
+        ${o.orderConfirmed ? `<p class="status-pill">Order confirmed</p>` : ""}
 
         ${o.extraChargeReason ? `
           <p class="extra-charge-notice">
@@ -1160,7 +954,7 @@ function renderCustomerAccount() {
           </p>
         ` : ""}
 
-        ${!o.returnRequest && !o.replacementRequest &&
+        ${o.orderConfirmed && !o.returnRequest && !o.replacementRequest &&
           o.status !== "Cancelled" ? `
           <div class="order-actions">
             <button
@@ -1184,6 +978,30 @@ function renderCustomerAccount() {
     `;
   }).join("");
 
+
+  orderContainer.querySelectorAll("[data-confirm-paid-order]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id=button.dataset.confirmPaidOrder;
+      const order=customerOrders.find(o=>o.id===id);
+      if(!order || order.paymentStatus!=="Paid" || order.orderConfirmed){toast("This order is not ready for confirmation.");return;}
+      if(!confirm("Confirm this paid order and open WhatsApp to send the order details to the shop?")) return;
+      const number=getWhatsAppNumber();
+      if(!number){toast("Shop WhatsApp number is not configured.");return;}
+      const wa=window.open("about:blank","_blank");
+      button.disabled=true;
+      try {
+        await updateDoc(doc(db,"orders",id),{orderConfirmed:true,status:"Confirmed"});
+        const url=`https://wa.me/${number}?text=${encodeURIComponent(createWhatsAppMessage({...order,orderConfirmed:true,status:"Confirmed"}))}`;
+        if(wa) wa.location.href=url; else window.location.href=url;
+        cart=[]; save("cwh_cart",cart); customization=""; customizationSaved=false; save("cwh_customization","");
+        updateCount(); renderCart(); updateCustomizationDisplay();
+        toast("Order confirmed. Press Send in WhatsApp to notify the shop.");
+      } catch(error) {
+        console.error("Order confirmation error:",error); if(wa) wa.close();
+        toast("Could not confirm your order. Please try again."); button.disabled=false;
+      }
+    });
+  });
 
   orderContainer.querySelectorAll("[data-return]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -1301,7 +1119,7 @@ $("#customerRegisterForm")?.addEventListener("submit", async e => {
 
 /* CUSTOMER LOGOUT */
 
-$("#customerLogoutBtn").onclick = async () => {
+$("#customerLogoutBtn")?.addEventListener("click", async () => {
   try {
     await signOut(auth);
     toast("You have signed out.");
@@ -1310,7 +1128,7 @@ $("#customerLogoutBtn").onclick = async () => {
     console.error(error);
     toast("Could not sign out.");
   }
-};
+});
 
 
 /* ADMIN LOGIN */
@@ -1430,7 +1248,7 @@ function renderAdmin() {
   const totalOrders = orders.length;
 
   const pendingOrders = orders.filter(o =>
-    o.status === "Pending"
+    o.paymentStatus !== "Paid" || !o.orderConfirmed
   ).length;
 
   const totalRevenue = orders
@@ -1518,6 +1336,7 @@ function renderAdmin() {
             <p>Product subtotal: ${money(o.subtotal)}</p>
             <p>Delivery charge: Included</p>
             <p>Extra charges: ${money(o.extraCharges)}</p>
+            <p>Customer confirmed: ${o.orderConfirmed ? "Yes" : "Not yet"}</p>
 
             <h3>Total: ${money(o.total)}</h3>
 
@@ -1608,16 +1427,7 @@ function renderAdmin() {
             ` : ""}
 
             <div class="admin-order-actions">
-              <button data-confirm-order="${escapeHtml(o.id)}">
-                Mark Confirmed
-              </button>
-
-              <button
-                data-delete-order="${escapeHtml(o.id)}"
-                class="danger-btn"
-              >
-                Delete order
-              </button>
+              <button data-delete-order="${escapeHtml(o.id)}" class="danger-btn">Delete order</button>
             </div>
 
             <div class="extra-charge-editor">
@@ -1731,30 +1541,6 @@ function renderAdmin() {
       } catch (error) {
         console.error(error);
         toast("Could not update replacement request.");
-      }
-    };
-  });
-
-
-  /* CONFIRM ORDERS */
-
-  document.querySelectorAll("[data-confirm-order]").forEach(button => {
-    button.onclick = async () => {
-      const orderId = button.dataset.confirmOrder;
-
-      try {
-        await updateDoc(
-          doc(db, "orders", orderId),
-          {
-            status: "Confirmed"
-          }
-        );
-
-        toast("Order confirmed.");
-
-      } catch (error) {
-        console.error(error);
-        toast("Could not confirm order.");
       }
     };
   });
