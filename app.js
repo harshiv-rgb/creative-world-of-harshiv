@@ -784,7 +784,26 @@ $("#checkoutForm")?.addEventListener("submit", async e => {
   const subtotal=items.reduce((sum,item)=>sum+item.price*item.qty,0);
   if (!Number.isFinite(subtotal) || subtotal<=0) { toast("Please check your cart total."); return; }
   const id="CWH-"+Date.now();
-  const order={id,customerUid:currentUser.uid,customerEmail:currentUser.email||"",date:new Date().toISOString(),name,phone,address,notes,items,subtotal,extraCharges:0,extraChargeReason:"",total:subtotal,customization:customizationSaved?customization:"",payment:"Google Pay / UPI",paymentStatus:"Pending Verification",status:"Payment Pending",orderConfirmed:false};
+  const order={
+  id,
+  customerUid:currentUser.uid,
+  customerEmail:currentUser.email||"",
+  date:new Date().toISOString(),
+  name,
+  phone,
+  address,
+  notes,
+  items,
+  subtotal,
+  extraCharges:0,
+  extraChargeReason:"",
+  total:subtotal,
+  customization:customizationSaved?customization:"",
+  payment:"Google Pay / UPI",
+  paymentStatus:"Pending Verification",
+  status:"Payment Pending",
+  orderConfirmed:false
+};
   const button=$("#placeOrderButton") || $("#checkoutForm button[type='submit']");
   if(button){button.disabled=true;button.textContent="Saving payment request...";}
   try {
@@ -1134,12 +1153,19 @@ $("#loginForm")?.addEventListener("submit", async e => {
   const password = e.target.elements.password.value;
 
   try {
-    await signInWithEmailAndPassword(auth, email, password);
-    toast("Login successful!");
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+
+    if (credential.user.uid !== ADMIN_UID) {
+      await signOut(auth);
+      toast("Access denied. This account is not authorized as admin.");
+      return;
+    }
+
+    toast("Admin login successful!");
 
   } catch (error) {
     console.error("Admin login error:", error);
-    toast("Admin login failed.");
+    toast("Admin login failed: " + error.message);
   }
 });
 
