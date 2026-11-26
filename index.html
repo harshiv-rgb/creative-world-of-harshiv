@@ -8,6 +8,40 @@
 <title>The Creative World of Harshiv</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="styles.css">
+
+<style>
+.policy-announcement {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 12px 0;
+  background: #a6262d;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.policy-announcement span {
+  display: inline-block;
+  padding-left: 100%;
+  animation: policy-scroll-right 18s linear infinite;
+}
+
+@keyframes policy-scroll-right {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .policy-announcement span {
+    animation: none;
+    padding-left: 12px;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -28,6 +62,10 @@
     <button class="nav-btn" data-view="admin">Admin</button>
   </nav>
 </header>
+
+<div class="policy-announcement" aria-label="Returns, replacements and refunds available. Please read our policy.">
+  <span>Returns, Replacements &amp; Refunds Available – Please Read Our Policy.</span>
+</div>
 
 <main>
 
@@ -99,50 +137,25 @@
 
       <label>
         Customer name
-        <input
-          name="customerName"
-          required
-          maxlength="80"
-          autocomplete="name"
-        >
+        <input name="customerName" required maxlength="80" autocomplete="name">
       </label>
 
       <label>
         Mobile number
-        <input
-          name="phone"
-          required
-          inputmode="tel"
-          pattern="[0-9+() -]{8,18}"
-          maxlength="18"
-          autocomplete="tel"
-        >
+        <input name="phone" required inputmode="tel" pattern="[0-9+() -]{8,18}" maxlength="18" autocomplete="tel">
       </label>
 
       <label>
         Full delivery address
-        <textarea
-          name="address"
-          required
-          maxlength="400"
-          rows="3"
-          autocomplete="street-address"
-        ></textarea>
+        <textarea name="address" required maxlength="400" rows="3" autocomplete="street-address"></textarea>
       </label>
 
       <label>
         Extra instructions (optional)
-        <textarea
-          name="notes"
-          maxlength="300"
-          rows="2"
-        ></textarea>
+        <textarea name="notes" maxlength="300" rows="2"></textarea>
       </label>
 
-      <!-- PRICE BREAKDOWN -->
-
       <div class="price-summary" id="checkoutPriceSummary">
-
         <h3>Order price details</h3>
 
         <div class="price-summary-row">
@@ -159,23 +172,15 @@
           <span>Final total</span>
           <b id="checkoutTotal">₹0</b>
         </div>
-
       </div>
 
-
-      <!-- CUSTOMIZATION FEATURE -->
-
       <div class="customization-box">
-
         <div class="customization-heading">
-
           <div>
             <span class="customization-icon">✨</span>
             <b>Customize Your Product</b>
           </div>
-
           <span class="optional-label">Optional</span>
-
         </div>
 
         <p>
@@ -183,58 +188,30 @@
           your product to be customized!
         </p>
 
-        <button
-          type="button"
-          class="customize-btn"
-          id="customizationBtn"
-        >
+        <button type="button" class="customize-btn" id="customizationBtn">
           ✨ Customize Your Product
         </button>
 
         <div id="customizationSection" class="hidden">
-
           <label for="customizationText">
             Describe your customization requirements
           </label>
 
-          <textarea
-            id="customizationText"
-            maxlength="1000"
-            rows="5"
-            placeholder="Example: I want this product in blue colour with the name Harsh written on it..."
-          ></textarea>
+          <textarea id="customizationText" maxlength="1000" rows="5" placeholder="Example: I want this product in blue colour with the name Harsh written on it..."></textarea>
 
           <div class="customization-actions">
-
-            <button
-              type="button"
-              class="primary-btn wide"
-              id="saveCustomization"
-            >
+            <button type="button" class="primary-btn wide" id="saveCustomization">
               Save Customization
             </button>
 
-            <button
-              type="button"
-              class="secondary-btn"
-              id="clearCustomization"
-            >
+            <button type="button" class="secondary-btn" id="clearCustomization">
               Clear
             </button>
-
           </div>
-
         </div>
 
-        <div
-          id="customizationDisplay"
-          class="customization-saved hidden"
-        ></div>
-
+        <div id="customizationDisplay" class="customization-saved hidden"></div>
       </div>
-
-
-      <!-- CUSTOMIZATION CHARGES NOTICE -->
 
       <p class="tiny muted">
         Extra charges for over customization. To see any extra
@@ -242,11 +219,7 @@
         details after one day of ordering.
       </p>
 
-
-      <!-- ONLINE PAYMENT -->
-
       <div class="payment-choice">
-
         <b>Online payment only — UPI</b>
 
         <div id="gpayInstructions" class="gpay-instructions">
@@ -254,14 +227,9 @@
           <p>Press Pay Now to open your UPI app chooser with the shop UPI ID and exact amount prefilled.</p>
           <p class="tiny muted">Payment will be manually verified by the shop before order confirmation.</p>
         </div>
-
       </div>
 
-      <button
-        class="primary-btn wide"
-        id="placeOrderButton"
-        type="submit"
-      >
+      <button class="primary-btn wide" id="placeOrderButton" type="submit">
         Pay Now
       </button>
 
@@ -271,9 +239,7 @@
       </p>
 
     </form>
-
   </div>
-
 </section>
 
 
@@ -282,11 +248,9 @@
 <section id="accountView" class="view hidden section">
 
   <p class="eyebrow">CUSTOMER ACCOUNT</p>
-
   <h1 class="page-title">My Account & Orders</h1>
 
   <div id="customerLogin">
-
     <p class="muted">
       Create an account or sign in to place orders
       and view your order history.
@@ -295,100 +259,55 @@
     <div class="customer-auth-grid">
 
       <div class="panel">
-
         <h2>Customer sign in</h2>
 
         <form id="customerLoginForm">
-
           <label>
             Email address
-            <input
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-            >
+            <input name="email" type="email" autocomplete="email" required>
           </label>
 
           <label>
             Password
-            <input
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-            >
+            <input name="password" type="password" autocomplete="current-password" required>
           </label>
 
-          <button class="primary-btn wide" type="submit">
-            Sign in
-          </button>
-
+          <button class="primary-btn wide" type="submit">Sign in</button>
         </form>
-
       </div>
 
-
       <div class="panel">
-
         <h2>Create an account</h2>
 
         <form id="customerRegisterForm">
-
           <label>
             Email address
-            <input
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-            >
+            <input name="email" type="email" autocomplete="email" required>
           </label>
 
           <label>
             Create password
-            <input
-              name="password"
-              type="password"
-              minlength="6"
-              autocomplete="new-password"
-              required
-            >
+            <input name="password" type="password" minlength="6" autocomplete="new-password" required>
           </label>
 
           <small class="tiny muted">
             Password must contain at least 6 characters.
           </small>
 
-          <button class="primary-btn wide" type="submit">
-            Create account
-          </button>
-
+          <button class="primary-btn wide" type="submit">Create account</button>
         </form>
-
       </div>
 
     </div>
-
   </div>
 
-
   <div id="customerAccount" class="hidden">
-
     <div class="panel">
+      <p>Signed in as <b id="customerEmail"></b></p>
 
-      <p>
-        Signed in as <b id="customerEmail"></b>
-      </p>
-
-      <button
-        class="secondary-btn"
-        id="customerLogoutBtn"
-        type="button"
-      >
+      <button class="secondary-btn" id="customerLogoutBtn" type="button">
         Sign out
       </button>
-
     </div>
 
     <h2>Your orders</h2>
@@ -396,7 +315,6 @@
     <div id="customerOrders">
       <p class="muted">Loading your orders...</p>
     </div>
-
   </div>
 
 </section>
@@ -407,14 +325,9 @@
 <section id="adminView" class="view hidden section">
 
   <p class="eyebrow">STORE MANAGEMENT</p>
-
   <h1 class="page-title">Admin dashboard</h1>
 
-
-  <!-- ADMIN LOGIN -->
-
   <div id="adminLogin" class="panel narrow">
-
     <h2>Admin sign in</h2>
 
     <p class="muted">
@@ -422,69 +335,37 @@
     </p>
 
     <form id="loginForm">
-
       <label>
         Admin email
-        <input
-          name="email"
-          type="email"
-          autocomplete="username"
-          required
-        >
+        <input name="email" type="email" autocomplete="username" required>
       </label>
 
       <label>
         Password
-        <input
-          name="password"
-          type="password"
-          autocomplete="current-password"
-          required
-        >
+        <input name="password" type="password" autocomplete="current-password" required>
       </label>
 
-      <button class="primary-btn wide" type="submit">
-        Sign in
-      </button>
-
+      <button class="primary-btn wide" type="submit">Sign in</button>
     </form>
 
     <p class="tiny muted">
       Only the authorized Firebase admin account can open this dashboard.
     </p>
-
   </div>
-
-
-  <!-- ADMIN DASHBOARD CONTENT -->
 
   <div id="adminPanel" class="hidden">
 
     <div class="admin-actions">
-
-      <button
-        class="secondary-btn"
-        id="exportOrdersBtn"
-        type="button"
-      >
+      <button class="secondary-btn" id="exportOrdersBtn" type="button">
         Export orders (CSV)
       </button>
 
-      <button
-        class="secondary-btn"
-        id="logoutBtn"
-        type="button"
-      >
+      <button class="secondary-btn" id="logoutBtn" type="button">
         Log out
       </button>
-
     </div>
 
-
-    <!-- STATISTICS -->
-
     <div class="stats">
-
       <div class="stat">
         <b id="adminTotalOrders">0</b>
         <span>Total orders</span>
@@ -499,14 +380,9 @@
         <b id="adminRevenue">₹0</b>
         <span>Paid revenue</span>
       </div>
-
     </div>
 
-
-    <!-- ORDERS -->
-
     <div class="panel">
-
       <h2>Orders</h2>
 
       <p class="tiny muted">
@@ -516,14 +392,9 @@
       </p>
 
       <div id="adminOrders"></div>
-
     </div>
 
-
-    <!-- MANAGE PRODUCTS -->
-
     <div class="panel">
-
       <h2>Manage products</h2>
 
       <p class="tiny muted">
@@ -533,70 +404,38 @@
       </p>
 
       <form id="addProductForm" class="product-form">
-
         <label>
           Product name
-          <input
-            name="name"
-            required
-            maxlength="70"
-          >
+          <input name="name" required maxlength="70">
         </label>
 
         <label>
           Original / cut price (₹)
-          <input
-            name="originalPrice"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Optional"
-          >
+          <input name="originalPrice" type="number" min="0" step="1" placeholder="Optional">
         </label>
 
         <label>
           Discounted selling price (₹)
-          <input
-            name="price"
-            type="number"
-            min="0"
-            step="1"
-            required
-          >
+          <input name="price" type="number" min="0" step="1" required>
         </label>
 
         <label>
           Short description
-          <input
-            name="description"
-            maxlength="140"
-          >
+          <input name="description" maxlength="140">
         </label>
 
         <label>
           Symbol / emoji
-          <input
-            name="symbol"
-            maxlength="4"
-            value="🎁"
-          >
+          <input name="symbol" maxlength="4" value="🎁">
         </label>
 
-        <button class="primary-btn" type="submit">
-          Add product
-        </button>
-
+        <button class="primary-btn" type="submit">Add product</button>
       </form>
 
       <div id="adminProducts"></div>
-
     </div>
 
-
-    <!-- WHATSAPP SETTINGS -->
-
     <div class="panel">
-
       <h2>WhatsApp shop number</h2>
 
       <p class="tiny muted">
@@ -607,27 +446,16 @@
       </p>
 
       <form id="settingsForm">
-
         <label>
           WhatsApp number
-          <input
-            name="whatsapp"
-            inputmode="numeric"
-            placeholder="91XXXXXXXXXX"
-            required
-          >
+          <input name="whatsapp" inputmode="numeric" placeholder="91XXXXXXXXXX" required>
         </label>
 
-        <button class="primary-btn" type="submit">
-          Save number
-        </button>
-
+        <button class="primary-btn" type="submit">Save number</button>
       </form>
-
     </div>
 
   </div>
-
 </section>
 
 </main>
@@ -636,7 +464,6 @@
 <!-- FOOTER -->
 
 <footer>
-
   <b>THE CREATIVE WORLD OF HARSHIV</b>
 
   <p>
@@ -648,15 +475,12 @@
   </small>
 
   <div class="footer-support">
-
     <span>Need help? Contact us:</span>
 
     <a href="mailto:harshivnadya@gmail.com">
       harshivnadya@gmail.com
     </a>
-
   </div>
-
 </footer>
 
 
@@ -673,7 +497,6 @@
 <!-- CONTACT BUTTONS -->
 
 <div class="contact-buttons">
-
   <a href="tel:+919780736653" class="call-link">
     📞 Call Us
   </a>
@@ -685,7 +508,6 @@
   <a href="https://wa.me/918558888095" class="whatsapp-link">
     WhatsApp 2
   </a>
-
 </div>
 
 </body>
