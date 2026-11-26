@@ -50,6 +50,7 @@ const db = getFirestore(firebaseApp);
 const storage = getStorage(firebaseApp);
 
 const ADMIN_UID = "7SgbiCsfqFS2WsxFV2sNXdBtCsR2";
+
 const shopSettingsRef = doc(db, "settings", "shop");
 const productsRef = collection(db, "products");
 const ordersRef = collection(db, "orders");
@@ -783,26 +784,7 @@ $("#checkoutForm")?.addEventListener("submit", async e => {
   const subtotal=items.reduce((sum,item)=>sum+item.price*item.qty,0);
   if (!Number.isFinite(subtotal) || subtotal<=0) { toast("Please check your cart total."); return; }
   const id="CWH-"+Date.now();
-  const order={
-  id,
-  customerUid:currentUser.uid,
-  customerEmail:currentUser.email||"",
-  date:new Date().toISOString(),
-  name,
-  phone,
-  address,
-  notes,
-  items,
-  subtotal,
-  extraCharges:0,
-  extraChargeReason:"",
-  total:subtotal,
-  customization:customizationSaved?customization:"",
-  payment:"Google Pay / UPI",
-  paymentStatus:"Pending Verification",
-  status:"Payment Pending",
-  orderConfirmed:false
-};
+  const order={id,customerUid:currentUser.uid,customerEmail:currentUser.email||"",date:new Date().toISOString(),name,phone,address,notes,items,subtotal,extraCharges:0,extraChargeReason:"",total:subtotal,customization:customizationSaved?customization:"",payment:"Google Pay / UPI",paymentStatus:"Pending Verification",status:"Payment Pending",orderConfirmed:false};
   const button=$("#placeOrderButton") || $("#checkoutForm button[type='submit']");
   if(button){button.disabled=true;button.textContent="Saving payment request...";}
   try {
@@ -1156,7 +1138,13 @@ $("#loginForm")?.addEventListener("submit", async e => {
 
     if (credential.user.uid !== ADMIN_UID) {
       await signOut(auth);
-      toast("Access denied. This account is not authorized as admin.");
+      toast("This account is not authorized as admin.");
+      console.error("Admin UID mismatch:", {
+        signedInEmail: credential.user.email,
+        signedInUid: credential.user.uid,
+        expectedAdminUid: ADMIN_UID,
+        firebaseProject: auth.app.options.projectId
+      });
       return;
     }
 
@@ -1164,7 +1152,11 @@ $("#loginForm")?.addEventListener("submit", async e => {
 
   } catch (error) {
     console.error("Admin login error:", error);
-    toast("Admin login failed: " + error.message);
+    toast(
+      error.code === "auth/invalid-credential"
+        ? "Incorrect email or password."
+        : "Admin login failed. Please try again."
+    );
   }
 });
 
