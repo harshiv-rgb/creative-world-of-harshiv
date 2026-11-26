@@ -1,4 +1,4 @@
-/* The Creative World of Harshiv — Neon Firebase Shop */
+/* The Creative World of Harshiv — Red and White Firebase Shop */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 
@@ -741,8 +741,8 @@ function updatePaymentInstructions() {
       <p>Press <b>Pay Now</b> to open your UPI app chooser with the shop UPI ID and exact amount prefilled.</p>
       <div class="gpay-number-row"><strong class="gpay-number">${UPI_ID}</strong><button type="button" id="copyGpayNumber" class="secondary-btn">Copy UPI ID</button></div>
       <p class="payment-warning">Before approving, verify that the recipient shown in your UPI app is exactly this UPI ID.</p>
-      <p class="tiny muted">Your payment request is saved first as Pending Verification. The shop administrator will check the actual bank/UPI receipt and mark it Paid. Only then will the Confirm Order & Send WhatsApp button appear in My Account.</p>
-      <p class="tiny muted">UPI apps do not automatically send payment confirmation to this website. A reference number or screenshot alone does not verify payment.</p>
+      <p class="tiny muted">Your payment request is saved first as Pending Verification. The shop administrator will verify the payment using the shop bank/UPI records and mark it Paid. Only then will the Confirm Order & Send WhatsApp button appear in My Account.</p>
+      <p class="tiny muted">Your UPI app does not automatically notify this website when payment is complete. The shop will verify the payment manually using its bank/UPI records.</p>
     </div>`;
   $("#copyGpayNumber")?.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(UPI_ID); toast("Shop UPI ID copied."); }
@@ -784,7 +784,7 @@ $("#checkoutForm")?.addEventListener("submit", async e => {
   const subtotal=items.reduce((sum,item)=>sum+item.price*item.qty,0);
   if (!Number.isFinite(subtotal) || subtotal<=0) { toast("Please check your cart total."); return; }
   const id="CWH-"+Date.now();
-  const order={id,customerUid:currentUser.uid,customerEmail:currentUser.email||"",date:new Date().toISOString(),name,phone,address,notes,items,subtotal,extraCharges:0,extraChargeReason:"",total:subtotal,customization:customizationSaved?customization:"",payment:"Google Pay / UPI",paymentStatus:"Pending Verification",upiTransactionId:"",status:"Payment Pending",orderConfirmed:false};
+  const order={id,customerUid:currentUser.uid,customerEmail:currentUser.email||"",date:new Date().toISOString(),name,phone,address,notes,items,subtotal,extraCharges:0,extraChargeReason:"",total:subtotal,customization:customizationSaved?customization:"",payment:"Google Pay / UPI",paymentStatus:"Pending Verification",status:"Payment Pending",orderConfirmed:false};
   const button=$("#placeOrderButton") || $("#checkoutForm button[type='submit']");
   if(button){button.disabled=true;button.textContent="Saving payment request...";}
   try {
@@ -910,12 +910,6 @@ function renderCustomerAccount() {
             ${escapeHtml(paymentStatus)}
           </p>
 
-          ${o.upiTransactionId ? `
-            <p>
-              <strong>UPI transaction reference:</strong>
-              ${escapeHtml(o.upiTransactionId)}
-            </p>
-          ` : ""}
         </div>
         ${paymentStatus === "Paid" && !o.orderConfirmed ? `
           <div class="request-box"><b>Payment verified!</b><p class="tiny">Confirm your order to send its details to the shop on WhatsApp.</p><button type="button" class="primary-btn wide" data-confirm-paid-order="${escapeHtml(o.id)}">Confirm Order & Send WhatsApp</button></div>
@@ -1351,12 +1345,6 @@ function renderAdmin() {
                 ${escapeHtml(paymentStatus)}
               </p>
 
-              ${o.upiTransactionId ? `
-                <p>
-                  <strong>UPI transaction reference:</strong>
-                  ${escapeHtml(o.upiTransactionId)}
-                </p>
-              ` : ""}
             </div>
 
             ${paymentStatus !== "Paid" ? `
@@ -2005,7 +1993,6 @@ $("#exportOrdersBtn")?.addEventListener("click", () => {
     "Total",
     "Payment Method",
     "Payment Status",
-    "UPI Transaction Reference",
     "Order Status",
     "Customization",
     "Notes"
@@ -2028,7 +2015,6 @@ $("#exportOrdersBtn")?.addEventListener("click", () => {
     o.total,
     o.payment || "Google Pay",
     o.paymentStatus || "Pending Verification",
-    o.upiTransactionId || "",
     o.status,
     o.customization,
     o.notes
