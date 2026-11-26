@@ -49,8 +49,7 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const storage = getStorage(firebaseApp);
 
-const ADMIN_UID = "7SgbiCsfqFS2WsxFV2";
-
+const ADMIN_UID = "7SgbiCsfqFS2WsxFV2sNXdBtCsR2";
 const shopSettingsRef = doc(db, "settings", "shop");
 const productsRef = collection(db, "products");
 const ordersRef = collection(db, "orders");
